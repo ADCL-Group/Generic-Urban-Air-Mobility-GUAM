@@ -10,6 +10,9 @@ function [G, v, uMin, uMax, duMin, duMax, Wv, Wu, u_d, du_d] = INDI_control(FM_u
     Vz_dot_ref = reference(4);
     V_dot_ref = reference(5);
 
+    pqr_dot_ref(2) = pqr_dot_ref(2) * cos(euler(1));
+    pqr_dot_ref(3) = pqr_dot_ref(3) * cos(euler(1))*cos(euler(2));
+
     % Track the yaw rate r from turn coordination when in fwd flight
     if eta == 0
         pqr_dot_ref(3) = reference(6);
