@@ -121,6 +121,27 @@ switch userStruct.variants.vehicleType
     error('UNRECOGNIZED VEHICLE TYPE')
 end
 
+
+% ADCL Control mode defaults
+if bExist && isfield(userStruct.variants,'ctrlMode') && isequal(userStruct.variants.ctrlMode, -1)
+  disp('User requested selection menu for control mode');
+  userStruct.variants = rmfield(userStruct.variants,'ctrlMode');
+end
+
+% Connection defaults (put in userStruct.variants.connection)
+if ~isfield(userStruct.variants,'connection'); userStruct.variants.connection = struct(); end
+
+if ~isfield(userStruct.variants.connection,'address') || isempty(userStruct.variants.connection.address)
+  userStruct.variants.connection.address = '127.0.0.1';
+end
+if ~isfield(userStruct.variants.connection,'portIn') || isempty(userStruct.variants.connection.portIn)
+  userStruct.variants.connection.portIn = 5502;
+end
+if ~isfield(userStruct.variants.connection,'portOut') || isempty(userStruct.variants.connection.portOut)
+  userStruct.variants.connection.portOut = 5501;
+end
+
+
 % clear vehDir rootDir bExist;
 clear rootDir bExist;
 
