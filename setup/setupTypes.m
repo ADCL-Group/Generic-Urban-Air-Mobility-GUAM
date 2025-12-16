@@ -109,6 +109,40 @@ function [Out, vs] = setupTypes(SimIn, variantStruct)
     SimIn.sensorType = selectSensorType;
   end
 
+  % ADCL connection + ctrl mode
+  % Defaults
+  addr  = "127.0.0.1";
+  pIn   = 5502;
+  pOut  = 5501;
+
+  % Pull from userStruct
+  if isfield(variantStruct, 'connection')
+    if isfield(variantStruct.connection,'address') && ~isempty(variantStruct.connection.address), addr = string(variantStruct.connection.address); end
+    if isfield(variantStruct.connection,'portIn')  && ~isempty(variantStruct.connection.portIn),  pIn  = double(variantStruct.connection.portIn); end
+    if isfield(variantStruct.connection,'portOut') && ~isempty(variantStruct.connection.portOut), pOut = double(variantStruct.connection.portOut); end
+  end
+
+  % Validate ports
+  if ~(isfinite(pIn) && pIn==floor(pIn) && pIn>=1 && pIn<=65535),  pIn  = 5502; end
+  if ~(isfinite(pOut)&& pOut==floor(pOut)&& pOut>=1&& pOut<=65535), pOut = 5501; end
+  if pIn == pOut, error("portIn and portOut cannot be the same (%d).", pIn); end
+
+  SimIn.simAddress    = char(addr);
+  SimIn.simPortInput  = pIn;
+  SimIn.simPortOutput = pOut;
+
+  simIsRemote = ~(addr=="127.0.0.1" || addr=="localhost");
+
+  if isfield(variantStruct,'ctrlMode')
+    SimIn.ctrlMode = CtrlModeEnum(variantStruct.ctrlMode);
+  else
+      if simIsRemote
+          SimIn.ctrlMode = CtrlModeEnum.RemotePilot; 
+      else
+          SimIn.ctrlMode = CtrlModeEnum.LocalPilot; 
+      end
+  end
+
   Out = SimIn;
   vs = variantStruct;
 end
