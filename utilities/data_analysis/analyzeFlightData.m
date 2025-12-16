@@ -25,12 +25,22 @@ flightCases = {
     'flight_summary15.mat', [10 17; 17 30; 30 40; 40 48];
 };
 
-allFlightTables = cell(size(flightCases, 1), 1);
-rawTrackingErrors = zeros(size(flightCases, 1), 3); % [RMS_x, RMS_y, RMS_z] per flight
-rawControlEfforts = zeros(size(flightCases, 1), 3); % [Cflap, Celev, Crud] per flight
+nFlights = size(flightCases, 1);
+
+allFlightTables = cell(nFlights, 1);
+rawTrackingErrors = zeros(nFlights, 3); % [RMS_x, RMS_y, RMS_z] per flight
+rawControlEfforts = zeros(nFlights, 3); % [Cflap, Celev, Crud] per flight
+rawWtot           = zeros(nFlights, 1); % Pilot effort mean
+
+% Cache data needed for normalized pass:
+time_trimmed_all     = cell(nFlights, 1);
+desiredTraj_all      = cell(nFlights, 1);
+surfaceRates_all     = cell(nFlights, 1);
+flownTraj_trimmed_all= cell(nFlights, 1);
+failIdxAil_all       = cell(nFlights, 1);
 
 % Settings
-weights = [0.6, 0.4]; % [w_T, w_C]
+weights = [0.6, 0.4]; % [w_T, w_A]
 
 % The Simulation's IC was configured to start approximatedly 10secs before
 % the actual start of the trajectory with the same speed and heading. So
@@ -38,12 +48,18 @@ weights = [0.6, 0.4]; % [w_T, w_C]
 % starts.
 trackingStartTime = 10; 
 
-for k = 1:size(flightCases, 1)
+for k = 1:nFlights
     dataFile = flightCases{k, 1};
     maneuverIntervals = flightCases{k, 2};
 
+    % Detect crash from maneuverIntervals == [0 Inf]
+    isCrash = (size(maneuverIntervals,1) == 1) && ...
+              (maneuverIntervals(1,1) == 0) && ...
+              isinf(maneuverIntervals(1,2));
+
     load(dataFile);
-    % plotFlightSummary(SimOut, PathPlan, Units, true, maneuverIntervals);
+    % plotFlightSummary(SimOut, Units, [], PathPlan, false, flightCases{k, 1});
+    % plotFlightSummary(SimOut, Units, maneuverIntervals, PathPlan, false);
 
     % Flight data
     time = SimOut.Time.Data;
@@ -51,27 +67,40 @@ for k = 1:size(flightCases, 1)
 
     idxTrack = time >= trackingStartTime & time <= maneuverIntervals(end, 2);
     time_trimmed = time(idxTrack);
+    time_trimmed_all{k} = time_trimmed;   % cache
 
     surfaceRates = SimOut.Vehicle.SurfAct.Rate.Data(:, [1 2 3 4 5]);
+    surfaceRates_all{k} = surfaceRates(idxTrack, :);
 
-    if isfield(PathPlan, 'replanTraj')
+    if isfield(SimOut, 'RTReplan') && ...
+       isfield(SimOut.RTReplan, 'flightTrajectory')
+
+        % If this is a timeseries, use .Data; otherwise use it directly.
+        ft = SimOut.RTReplan.flightTrajectory;
+        if isstruct(ft) && isfield(ft, 'Data')
+            desiredTraj = ft.Data(:,1:3);
+        else
+            desiredTraj = ft(:,1:3);
+        end
+    % PathPlan.replanTraj
+    elseif isfield(PathPlan, 'replanTraj') && ~isempty(PathPlan.replanTraj)
         desiredTraj = PathPlan.replanTraj(:,1:3);
-    else
+    % PathPlan.smoothedTraj
+    elseif isfield(PathPlan, 'smoothedTraj') && ~isempty(PathPlan.smoothedTraj)
         desiredTraj = PathPlan.smoothedTraj(:,1:3);
     end
+    desiredTraj_all{k} = desiredTraj;     % cache
 
-    [x, y, z] = latlon2local(...
-        SimOut.Vehicle.EOM.WorldRelativeData.LatLonAlt.LatGeod.Data*180/pi, ...
-        SimOut.Vehicle.EOM.WorldRelativeData.LatLonAlt.Lon.Data*180/pi, ...
-        SimOut.Vehicle.EOM.WorldRelativeData.LatLonAlt.AltGeod.Data/3.281, ...
-        PathPlan.result.origin);
-    flownTraj = [x, y, z];
+    Pos_bii = SimOut.Vehicle.EOM.InertialData.Pos_bii.Data / 3.281;
+    flownTraj = [Pos_bii(:,2), Pos_bii(:,1), -Pos_bii(:,3)];
     flownTraj_trimmed = flownTraj(idxTrack, :);
+    flownTraj_trimmed_all{k} = flownTraj_trimmed;  % cache
 
     % Failure data
     initTimes = Fail.Surfaces.InitTime;
     aileronInit = initTimes(1:2);
     failIdxAil = find(aileronInit > 0, 1); % failIdxAil is 1 if is left, 2 if is right
+    failIdxAil_all{k} = failIdxAil;
     failTime = aileronInit(failIdxAil);
     timeFailIdx = find(time == failTime);
     if ~isempty(timeFailIdx)
@@ -79,9 +108,6 @@ for k = 1:size(flightCases, 1)
     else
         failVal = NaN;
     end
-
-    delaL = SimOut.Vehicle.SurfAct.Position.Data(:,1) * 180/pi;
-    delaR = SimOut.Vehicle.SurfAct.Position.Data(:,2) * 180/pi;
 
     % Trajectory tracking metrics
     [minDistVec, minError, maxError, meanError, perctTunnel] = getTrajectoryError(flownTraj_trimmed, desiredTraj);
@@ -113,20 +139,6 @@ for k = 1:size(flightCases, 1)
         pilotMetrics(i).fco_dir  = fco_dir;
     end
 
-    % System performance metrics    
-    dummyNorm = [1, 1, 1];
-    [C_tilde, C_flap, C_elev, C_rud] = getCtrlActIdx(surfaceRates(idxTrack, :), time_trimmed, dummyNorm, failIdxAil == 1);
-    [T_tilde, Tx, Ty, Tz] = getTrackingPerfIdx(desiredTraj, flownTraj_trimmed, time_trimmed, dummyNorm);
-
-    rawControlEfforts(k, :) = [C_flap, C_elev, C_rud];
-    rawTrackingErrors(k, :) = [Tx, Ty, Tz];
-
-    PI = getPerfIdx(T_tilde, C_tilde, weights);
-
-    % Create summary table with key metrics
-    failSide = ["Left", "Right"];
-    failAilStr = failSide(failIdxAil);
-
     Wx_all   = cell(nManeuvers, 1);
     Wtot_all = zeros(nManeuvers, 1);
     fco_lon_all = zeros(nManeuvers, 1);
@@ -138,23 +150,42 @@ for k = 1:size(flightCases, 1)
         fco_lon_all(i) = pilotMetrics(i).fco_lon;
         fco_lat_all(i) = pilotMetrics(i).fco_lat;
     end
+    rawWtot(k) = mean(Wtot_all);
+
+    % System performance metrics    
+    dummyNorm = [1, 1, 1];
+    [A_tilde_raw, A_flap, A_elev, A_rud] = getCtrlActIdx(surfaceRates_all{k}, time_trimmed, dummyNorm, failIdxAil == 1);
+    [T_tilde_raw, Tx, Ty, Tz] = getTrackingPerfIdx(desiredTraj, flownTraj_trimmed, time_trimmed, dummyNorm);
+
+    rawControlEfforts(k, :) = [A_flap, A_elev, A_rud];
+    rawTrackingErrors(k, :) = [Tx, Ty, Tz];
+
+    E_tilde_raw = rawWtot(k);
+
+    PI_raw = getPerfIdx(T_tilde_raw, A_tilde_raw, weights);
+
+    % Create summary table with key metrics
+    failSide = ["Left", "Right"];
+    failAilStr = failSide(failIdxAil);
 
     flightTable = table( ...
         string(dataFile), ...
+        isCrash, ...
         failTime, ...
         failVal, ...
         minError, maxError, meanError, perctTunnel, ...
-        T_tilde, C_tilde, PI, ...
+        T_tilde_raw, A_tilde_raw, E_tilde_raw, PI_raw, ...
         {Wx_all}, {Wtot_all}, ...
-        mean(Wtot_all), ...
+        rawWtot(k), ...
         {fco_lat_all}, {fco_lon_all}, ...
         'VariableNames', { ...
             'File', ...
+            'IsCrash', ...
             'FailTime_s', ...
             'FailedAileron', ...
             'MinTrackErr_m', 'MaxTrackErr_m', ...
             'MeanTrackErr_m', 'PerInside30m', ...
-            'T_tilde', 'C_tilde', 'PerformanceIndex' ...
+            'T_tilde', 'A_tilde', 'E_tilde', 'PerformanceIndex', ...
             'PilotAggress_Wx', ...
             'PilotEffort_Wtot', ...
             'PilotEffort_Wtot_Mean', ...
@@ -165,47 +196,22 @@ for k = 1:size(flightCases, 1)
     allFlightTables{k} = flightTable;
 end
 
-Cnorm_ctrl = max(rawControlEfforts, [], 1);
-Cnorm_pos = max(rawTrackingErrors, [], 1);
+% Compute global normalization constants
+Cnorm_efft = max(rawWtot); % pilot effort max
+Cnorm_ctrl = max(rawControlEfforts, [], 1);% [max Af, max Ae, max Ar]
+Cnorm_pos  = max(rawTrackingErrors, [], 1);% [max Tx, max Ty, max Tz]
 
-for k = 1:size(flightCases, 1)
-    dataFile = flightCases{k, 1};
-    maneuverIntervals = flightCases{k, 2};
-    load(dataFile);
-
-    time = SimOut.Time.Data;
-    idxTrack = time >= trackingStartTime & time <= maneuverIntervals(end, 2);
-    time_trimmed = time(idxTrack);
-
-    surfaceRates = SimOut.Vehicle.SurfAct.Rate.Data(:, [1 2 3 4 5]);
-
-    if isfield(PathPlan, 'replanTraj')
-        desiredTraj = PathPlan.replanTraj(:,1:3);
-    else
-        desiredTraj = PathPlan.smoothedTraj(:,1:3);
-    end
-
-    [x, y, z] = latlon2local(...
-        SimOut.Vehicle.EOM.WorldRelativeData.LatLonAlt.LatGeod.Data*180/pi, ...
-        SimOut.Vehicle.EOM.WorldRelativeData.LatLonAlt.Lon.Data*180/pi, ...
-        SimOut.Vehicle.EOM.WorldRelativeData.LatLonAlt.AltGeod.Data/3.281, ...
-        PathPlan.result.origin);
-    flownTraj = [x, y, z];
-    flownTraj_trimmed = flownTraj(idxTrack, :);
-
-    % Failure info
-    initTimes = Fail.Surfaces.InitTime;
-    aileronInit = initTimes(1:2);
-    failIdxAil = find(aileronInit > 0, 1); % failIdxAil is 1 if is left, 2 if is right
-
+for k = 1:nFlights
     % Recalculate normalized metrics
-    C_tilde = getCtrlActIdx(surfaceRates(idxTrack, :), time_trimmed, Cnorm_ctrl, failIdxAil == 1);
-    T_tilde = getTrackingPerfIdx(desiredTraj, flownTraj_trimmed, time_trimmed, Cnorm_pos);
-    PI = getPerfIdx(T_tilde, C_tilde, weights);
+    E_tilde = rawWtot(k) / Cnorm_efft;
+    A_tilde = getCtrlActIdx(surfaceRates_all{k}, time_trimmed_all{k}, Cnorm_ctrl, failIdxAil_all{k} == 1);
+    T_tilde = getTrackingPerfIdx(desiredTraj_all{k}, flownTraj_trimmed_all{k}, time_trimmed_all{k}, Cnorm_pos);
+    PI = getPerfIdx(T_tilde, A_tilde, weights);
 
     % Overwrite entries in the table
     allFlightTables{k}.T_tilde = T_tilde;
-    allFlightTables{k}.C_tilde = C_tilde;
+    allFlightTables{k}.A_tilde = A_tilde;
+    allFlightTables{k}.E_tilde = E_tilde;
     allFlightTables{k}.PerformanceIndex = PI;
 end
 
