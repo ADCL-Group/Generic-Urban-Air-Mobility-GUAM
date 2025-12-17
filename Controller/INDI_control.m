@@ -91,8 +91,8 @@ function [G, v, uMin, uMax, duMin, duMax, Wv, Wu, u_d, du_d] = INDI_control(FM_u
         surf_max = 0.*surf_hi;
     else % Transition
         Wv    = diag([1000, 1000, 100, 100, 100]);
-        % surf_min = (1 - eta).*surf_lo;
-        % surf_max = (1 - eta).*surf_hi;
+        surf_min = (1 - eta).*surf_lo;
+        surf_max = (1 - eta).*surf_hi;
     end
 
     duMin = [max(om_prop_min - om_prop_curr,-ompdot_max*dt); max(surf_min - delta_curr, -deldot_max*dt)];
@@ -100,8 +100,11 @@ function [G, v, uMin, uMax, duMin, duMax, Wv, Wu, u_d, du_d] = INDI_control(FM_u
     uMin = [max(om_prop_min, om_prop_curr - ompdot_max*dt); max(surf_min, delta_curr - deldot_max*dt)];
     uMax = [min(om_prop_max, om_prop_curr + ompdot_max*dt); min(surf_max, delta_curr + deldot_max*dt)];
 
-    Wu = diag(1 ./ (uMax - uMin));
-    Wu(isnan(Wu) | isinf(Wu)) = 0;
+    uPhysMin = [om_prop_lo; surf_lo];
+    uPhysMax = [om_prop_hi; surf_hi];
+    physRange = uPhysMax - uPhysMin;
+
+    Wu = diag(1 ./ physRange);
     Wu(1:8,1:8) = Wu(1:8,1:8) * 50;   % punish vertical props 50x more
     Wu(9,9)    = Wu(9,9) / 10;        % let pusher move more easily
     Wu(10:end,10:end) = Wu(10:end,10:end) * 0.5;
