@@ -1,10 +1,12 @@
-function [u, W, iter] = activeSetWLS(G, v, uMin, uMax, Wv, Wu, ud)
+function [u, W, iter] = activeSetWLS(G, v, uMin, uMax, Wv, Wu, ud, gam)
 
 %                            0 if u_i not saturated
 % Working set syntax: W_i = -1 if u_i = uMin_i
 %                           +1 if u_i = uMax_i
 
-    gam = 1e4;
+    if gam <= 0
+        gam = 1e4;
+    end
     iterMax = 50;
 
     n = length(uMin);
@@ -22,7 +24,7 @@ function [u, W, iter] = activeSetWLS(G, v, uMin, uMax, Wv, Wu, ud)
 
     for iter = 1:iterMax
         A_free = A(:,free); % Determine free vars
-        p_free = A_free\d; % Solve the optimization problem for free vars
+        p_free = lsqminnorm(A_free, d); % Solve the optimization problem for free vars
 
         % Zero all perturbations corresponding to active constraints and
         % insert perturbations into the free vars.

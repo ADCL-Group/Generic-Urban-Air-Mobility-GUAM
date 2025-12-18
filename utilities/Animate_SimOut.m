@@ -63,7 +63,7 @@ end
 
 % Check if tiltwing class object exists, otherwise create it (reqd for draw methods)
 if ~exist('tiltwing','var')
-    tiltwing = build_Lift_plus_Cruise(userStruct.variants.scaling);
+    tiltwing = build_Lift_plus_Cruise(1);
 end
 % *************************************************************************
 
@@ -78,6 +78,9 @@ else
 end
 vid = VideoWriter(VideoOutFname);
 open(vid);
+
+fig = figure('Color','w','ToolBar','none','MenuBar','none','Renderer','opengl');
+set(fig,'Units','pixels','Position',[100 100 960 540]);   % 540p to encode faster
 
 ax = axes;
 xlabel('X (ft)')
@@ -181,9 +184,8 @@ for ind = tStart_ind:step_int*FR_factor:tEnd_ind
     % legend('As Flown Traj','Desired Traj','Location', 'southoutside');
     legend('As Flown Traj','Location', 'southoutside');
 
-    drawnow;
-    frame = getframe(gcf);
-    writeVideo(vid,frame);
+    drawnow limitrate nocallbacks;
+    writeVideo(vid,getframe(gcf));
     first_pass_flag = 1;
 end
 close(vid)
