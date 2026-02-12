@@ -1,28 +1,47 @@
 %% Trim_Case_7_Scale_x.m
-function fname = Trim_Case_7_Scale_x(SimIn)
-arguments
-    SimIn struct
+function fname = Trim_Case_7_Scale_x(SimIn, UH, WH, R, trans_start, trans_end)
+% arguments
+%     SimIn struct
+% end
+
+vehID = SimIn.vehID;
+
+switch vehID
+    case {0,-1}
+        vehTag = 'GUAM';
+    case 1
+        vehTag = 'HERO';
+    otherwise
+        vehTag = sprintf('VEH%d', SimIn.vehID);
 end
 
-% Extract raw and build scales
-buildScale   = SimIn.ScalingFactor;
+
+buildScale   = abs(SimIn.ScalingFactor);
+pct = round(buildScale * 100);
 
 scriptFullPath = mfilename('fullpath');
 [scriptDir,~,~] = fileparts(scriptFullPath);
-out_path      = scriptDir;
-pct = round(buildScale * 100);
-fname = sprintf('Trim_Scale_%02d_XU0_interp.mat', pct);
+out_path = scriptDir;
+
+if any(SimIn.vehID == [0 -1]) && abs(buildScale - 1.0) < 1e-9
+    fname = sprintf('Trim_%s_XU0_interp.mat', vehTag);
+elseif any(SimIn.vehID == [0 -1])          % GUAM with scale != 1
+    fname = sprintf('Trim_%s_Scale_%02d_XU0_interp.mat', vehTag, pct);
+else                                       % non-scalable vehicles
+    fname = sprintf('Trim_%s_XU0_interp.mat', vehTag);
+end
 
 out_file = fullfile(out_path, fname);
 
-%— if the file already exists, skip the heavy trim work
+% if the file already exists, skip the trim work
 if isfile(out_file)
   fprintf('Trim file "%s" already exists. Skipping trim generation.\n', fname);
   return;
 end
 
 % Build model
-LPC = build_Lift_plus_Cruise(buildScale);
+% LPC = build_Lift_plus_Cruise(buildScale);
+LPC = build_vehicle(SimIn);
 LPC.om_p = zeros(1,SimIn.numEngines);
 
 % Set SFunction flag and blending
@@ -32,30 +51,36 @@ blending_method = 2;
 
 % Load simulation units and environment
 kts2ft = SimIn.Units.nmile/SimIn.Units.ft/3600;
-a = 1125.33;
+a = 1125.33;  % Sound speed in ft/s
 
 % Define speed vectors scaled by sqrt(geometric scale)
 speedScale = sqrt(buildScale);
-UH = [0:5:90,94.8,95,100:5:130]*kts2ft*speedScale;
-WH = 0;
-R  = inf;
-
-% Define transition thresholds
-trans_start = 30*kts2ft*speedScale;
-trans_end   = 90*kts2ft*speedScale;
+UH = UH(:).' * kts2ft;
+WH = WH * kts2ft;
+R = R;
+trans_start = trans_start * kts2ft;
+trans_end = trans_end * kts2ft;
 
 % Optimization settings and physical constants
 max_evals      = 5000;   max_iter      = 500;
 max_evals2     = 11000;  max_iter2     = 1000;
 GRAV = SimIn.Environment.Earth.Gravity.g0(3);
 RHO  = SimIn.Environment.Atmos.rho0;
-Ns   = 4;
+
+d2r = pi/180;
+
+Ns   = SimIn.numSurfaces - 1;
 Np   = SimIn.numEngines;
-Num_FreeVars  = 18;
+Npl = int32((Np-1)/2);
+Num_FreeVars  = 5 + Ns + Np;
 
 % Bounds for strip theory
-LB = [ -5*pi/180  -60*pi/180 -2*pi -2*pi -2*pi -30*pi/180 -30*pi/180 -30*pi/180 -30*pi/180 zeros(1,4)    zeros(1,4)     0        ];
-UB = [ 15*pi/180   60*pi/180  2*pi  2*pi  2*pi  30*pi/180  30*pi/180  30*pi/180  30*pi/180 repmat(250,1,4)  repmat(250,1,4)   400.00   ];
+%       th      phi     p       q       r    flp     ail     elv     rud   rl      rt      pp
+LB = [-5*d2r        -60*d2r     -2*pi       -2*pi       -2*pi,  -30*d2r      -30*d2r     -30*d2r     -30*d2r,  zeros(1,Npl)   zeros(1,Npl)  0.0];
+UB = [ 15*d2r       60*d2r      2*pi        2*pi        2*pi,  30*d2r       30*d2r      30*d2r      30*d2r,  repmat(LPC.Prop{1}.max_rpm,1,Npl)*2*pi/60  repmat(LPC.Prop{1}.max_rpm,1,Npl)*2*pi/60    LPC.Prop{end}.max_rpm*2*pi/60 ];
+
+xoVert = (UB(Num_FreeVars-(Np-1):Num_FreeVars-1)-LB(Num_FreeVars-(Np-1):Num_FreeVars-1))/2;
+xoPp = (UB(end)-LB(end))/2;
 
 % Preallocate
 XEQ     = nan(numel(UH), Num_FreeVars+3, numel(WH), numel(R));
@@ -71,9 +96,15 @@ q_del_f = 1; % flap deflection
 q_del_a = 1 ; % aileron deflection
 q_del_e = 1; % elevator deflection
 q_del_r = 1 ; % rudder deflection
-q_om_l  = 1*[1 1 1 1] ; % leading edge prop speed 
-q_om_t  = 1*[1 1 1 1]; % trailing edge prop speed 
+q_om_l  = 1*ones(1,Npl); % leading edge prop speed
+q_om_t  = 1*ones(1,Npl); % trailing edge prop speed
 q_om_p  = 1; % pusher prop speed
+
+if Np == 9
+    base = [1 0 1 0];
+elseif Np == 5
+    base = [1 1];
+end
 
 % Loop through trim points
 numPts = numel(UH)*numel(WH)*numel(R);
@@ -87,14 +118,14 @@ for ii = 1:numel(R)
             % Select trim condition based on UH
             if UH(jj) <= trans_start
                 % Hover case 7
-                X0_hover = [-2*pi/180; 0; 0; 0; 0; -25*pi/180; 0; 0; 0; repmat(90,4,1); repmat(90,4,1); 0];
-                FreeVar_hover = boolean([1 1 0 0 0 1 1 1 1 [1 0 1 0] [1 0 1 0] 1]);
-                offset_x0_hover = zeros(18,1);
-                offset_x0_hover(1) = UH(jj)/trans_start * 6*pi/180;
-                offset_x0_hover(6) = (1 - UH(jj)/trans_start) * -25*pi/180;
-                offset_x0_hover(10:17) = 90;
-                scale_hover = ([180/pi 180/pi 180/pi 180/pi 180/pi 180/pi 180/pi 180/pi 180/pi ones(1,9)]' ./ (UB - LB)');
-                gang_hover  = [zeros(9,1); ones(2,1); 2*ones(2,1); 3*ones(2,1); 4*ones(2,1); 0];
+                X0_hover = [-2*d2r; 0; 0; 0; 0; -25*d2r; 0; 0; 0; xoVert(1:Npl)'; xoVert(Npl+1:end)'; 0.0];
+                FreeVar_hover = boolean([1 1 0 0 0 1 1 1 1 base base 1]);
+                offset_x0_hover = zeros(Num_FreeVars,1);
+                offset_x0_hover(1) = UH(jj)/trans_start * 6*d2r;
+                offset_x0_hover(6) = (1 - UH(jj)/trans_start) * -25*d2r;
+                offset_x0_hover(Num_FreeVars-Np+1:Num_FreeVars-1) = xoVert(1);
+                scale_hover = ([1/d2r 1/d2r 1/d2r 1/d2r 1/d2r 1/d2r 1/d2r 1/d2r 1/d2r ones(1,Np)]' ./ (UB - LB)');
+                gang_hover  = [zeros(5+Ns,1); ones(Npl/2,1); 2*ones(Npl/2,1); 3*ones(Npl/2,1); 4*ones(Npl/2,1); 0];
                 Q_hover = diag([q_theta q_phi q_p q_q q_r q_del_f q_del_a q_del_e q_del_r q_om_l q_om_t q_om_p]);
 
                 FreeVar         = FreeVar_hover;
@@ -106,15 +137,15 @@ for ii = 1:numel(R)
                 Q               = Q_hover;
             elseif UH(jj) <= trans_end
                 % Transition case 7
-                X0_trans = [6*pi/180; 0; 0; 0; 0; 0; 0; 0; 0; repmat(35,4,1); repmat(35,4,1); 105];
-                FreeVar_trans = boolean([1 0 0 0 0 0 1 1 1 [1 0 1 0] [1 0 1 0] 1]);
-                offset_x0_trans = zeros(18,1);
-                offset_x0_trans(1) = 6*pi/180 + UH(jj)/trans_end * 1.8*pi/180;
-                if UH(jj) > (trans_end - 10)
-                    offset_x0_trans(10:17) = 60 * (trans_end - UH(jj)) / 10;
+                X0_trans = [6*d2r; 0; 0; 0; 0; 0; 0; 0; 0; xoVert(1:Npl)'; xoVert(Npl+1:end)'; xoPp];
+                FreeVar_trans = boolean([1 0 0 0 0 0 1 1 1 base base 1]);
+                offset_x0_trans = zeros(Num_FreeVars,1);
+                offset_x0_trans(1) = 6*d2r + UH(jj)/trans_end * 1.8*d2r;
+                if UH(jj) > (trans_end - 10*speedScale) % Change by % of vel
+                    offset_x0_trans(Num_FreeVars-Np+1:Num_FreeVars-1) = xoVert(1)*(trans_end - UH(jj))*speedScale/10;
                 end
-                scale_trans = ([180/pi 180/pi 180/pi 180/pi 180/pi 180/pi 180/pi 180/pi 180/pi ones(1,9)]' ./ (UB - LB)');
-                gang_trans = [zeros(9,1); ones(2,1); 2*ones(2,1); 3*ones(2,1); 4*ones(2,1); 0];
+                scale_trans = ([1/d2r 1/d2r 1/d2r 1/d2r 1/d2r 1/d2r 1/d2r 1/d2r 1/d2r ones(1,Np)]' ./ (UB - LB)');
+                gang_trans = [zeros(5+Ns,1); ones(Npl/2,1); 2*ones(Npl/2,1); 3*ones(Npl/2,1); 4*ones(Npl/2,1); 0];
                 Q_trans = diag([q_theta q_phi q_p q_q q_r q_del_f q_del_a q_del_e q_del_r q_om_l q_om_t q_om_p]);
 
                 FreeVar             = FreeVar_trans;
@@ -126,11 +157,11 @@ for ii = 1:numel(R)
                 Q                   = Q_trans;
             else
                 % Cruise case 7
-                X0_cruise = [8*pi/180; 0; 0; 0; 0; 0; 0; 0; 0; zeros(4,1); zeros(4,1); 150];
-                FreeVar_cruise = boolean([1 1 0 0 0 0 1 1 1 [0 0 0 0] [0 0 0 0] 1]);
-                offset_x0_cruise = zeros(18,1);
-                scale_cruise = ([180/pi 180/pi 180/pi 180/pi 180/pi 180/pi 180/pi 180/pi 180/pi ones(1,9)]' ./ (UB - LB)');
-                gang_cruise = zeros(18,1);
+                X0_cruise = [8*d2r; 0; 0; 0; 0; 0; 0; 0; 0; zeros(Npl,1);    zeros(Npl,1);     xoPp];
+                FreeVar_cruise = boolean([1 1 0 0 0 0 1 1 1 zeros(1,Npl) zeros(1,Npl) 1]);
+                offset_x0_cruise = zeros(Num_FreeVars,1);
+                scale_cruise = ([1/d2r 1/d2r 1/d2r 1/d2r 1/d2r 1/d2r 1/d2r 1/d2r 1/d2r ones(1,Np)]' ./ (UB - LB)');
+                gang_cruise = zeros(Num_FreeVars,1);
                 Q_cruise = diag([q_theta q_phi q_p q_q q_r q_del_f q_del_a q_del_e q_del_r q_om_l q_om_t q_om_p]);
 
                 FreeVar             = FreeVar_cruise;
@@ -142,7 +173,10 @@ for ii = 1:numel(R)
                 Q                   = Q_cruise;
             end
 
-            TRIM_POINT = [UH(jj) WH(kk) R(ii)];
+            RHB = Rx(x0(2)) * Ry(x0(1));
+            vH  = RHB' * [UH(jj) 0 WH(kk)]';
+
+            TRIM_POINT = [vH(1) vH(3) R]; 
 
             lb = LB(FreeVar);
             ub = UB(FreeVar);
@@ -265,10 +299,14 @@ for i = 1:numPts
            GRAV*cos(th)*cos(phi)];
   eta  = [phi; th; psi];
 
+  Rot = Rx(phi)*Ry(th);
+  vb = Rot*vbar;
+
+
   del = U(1:Ns);
   omp = U(Ns+1:Ns+Np);
 
-  XU0_interp(:,i) = [ vbar; om; ab; eta; del(:); omp(:) ];
+  XU0_interp(:,i) = [ vb; om; ab; eta; del(:); omp(:) ];
 end
 
 save(out_file, 'XU0_interp', 'R', 'UH', 'WH', '-v7.3');

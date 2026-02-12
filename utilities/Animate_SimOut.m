@@ -63,13 +63,13 @@ end
 
 % Check if tiltwing class object exists, otherwise create it (reqd for draw methods)
 if ~exist('tiltwing','var')
-    tiltwing = build_Lift_plus_Cruise(1);
+    tiltwing = build_vehicle(struct('vehID',-1));
 end
 % *************************************************************************
 
 % ********************* Animate Simulation Output
 % *************************
-clear tObj TraceHand DesTrajHand a_hand
+clear tObj TraceHand DesTrajHand a_hand vid gcf
 tStart_ind = find(SimOut.Time.Data>=t_start,1,'first');
 if isempty(t_end)
     tEnd_ind = length(SimOut.Time.Data);
@@ -185,7 +185,10 @@ for ind = tStart_ind:step_int*FR_factor:tEnd_ind
     legend('As Flown Traj','Location', 'southoutside');
 
     drawnow limitrate nocallbacks;
-    writeVideo(vid,getframe(gcf));
+    frame = getframe(gcf);
+    img = frame.cdata;
+    img = imresize(img,[540 960]);   % height, width
+    writeVideo(vid, img);
     first_pass_flag = 1;
 end
 close(vid)

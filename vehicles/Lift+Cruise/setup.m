@@ -6,7 +6,7 @@ function Out = setup(SimIn, target, releaseMode)
   end
   
   % setup the number of engines and control surfaces
-  SimIn.numEngines = 9;
+  SimIn.numEngines = 9; % default value
   SimIn.numSurfaces = 5;  % e.g. left flaperon, right flaperon, left elevator, right elevator, rudder
 
   % build scripts for the different model types
@@ -14,21 +14,18 @@ function Out = setup(SimIn, target, releaseMode)
   switch SimIn.fmType
     case 'SFunction'
       % Build model of the lift+cruise aircraft
-      rawScale = SimIn.ScalingFactor;
-      if rawScale > 0
-        buildScale = rawScale;
-      else
-        buildScale = 1;      % no geometric change if –1 or any negative
-      end
 
       if releaseMode == false
         disp('Standard Mode');
-        SimIn.Model = build_Lift_plus_Cruise(buildScale);
+        [SimIn.Model,SimIn.CtrlTrim] = build_vehicle(SimIn);
       else
         disp('Release Mode');
         % Modification: no changes with release mode
-        SimIn.Model = build_Lift_plus_Cruise(buildScale);
+        [SimIn.Model,SimIn.CtrlTrim] = build_vehicle(SimIn);
       end
+
+      SimIn.numEngines = length(SimIn.Model.Prop); % get the actual # of engines
+
       %   CModel = common model parameters
       SimIn.CModel = LpC_model_parameters(SimIn); 
       % the following properties are needed to calculate propulsion gyroscopic effects
@@ -80,6 +77,16 @@ function Out = setup(SimIn, target, releaseMode)
 
   % Set environmental conditions, e.g. geodesy, atmosphere, winds, turbulence
   SimIn.Environment = setupEnvironment(SimIn);
+
+  % generate the trim table
+  UH = SimIn.CtrlTrim.trim_vel;
+  WH = 0;
+  R  = inf;
+    
+  trans_start = SimIn.CtrlTrim.V_hover_exit;
+  trans_end   = SimIn.CtrlTrim.V_cruise_enter;
+  trimFname = Trim_Case_7_Scale_x(SimIn, UH, WH, R, trans_start, trans_end);
+  SimIn.trimFile = trimFname;
 
   SimIn = setupVehicle(SimIn, target);
 
