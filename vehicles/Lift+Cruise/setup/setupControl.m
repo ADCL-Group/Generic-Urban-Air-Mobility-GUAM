@@ -79,7 +79,7 @@ track     = refInputs.initialTrack;
 % the flight path angle will be used
 ubar0 = Vel_bIc_0(1);
 wbar0 = Vel_bIc_0(3);
-for ii = 1:25
+for ii = 1:size(Out.trim.XU0_interp,1)
     if length(Out.trim.WH) > 1 
         XU0(ii,1) = interp2(Out.trim.WH, Out.trim.UH, squeeze(Out.trim.XU0_interp(ii,:,:)), wbar0, ubar0,'linear',Out.trim.XU0_interp(ii,1,2));
     else
@@ -105,8 +105,8 @@ delf0       = XU0(13,1);
 dela0       = XU0(14,1);
 dele0       = XU0(15,1);
 delr0       = XU0(16,1);
-om_rotor0   = XU0(17:24,1);
-om_pusher0  = XU0(25,1);
+om_rotor0   = XU0(17:end-1,1);
+om_pusher0  = XU0(end,1);
 
 Out.IC.surf0 = delf0*Out.surface_alloc.alloc_flap + ...
                dela0*Out.surface_alloc.alloc_ail + ...
