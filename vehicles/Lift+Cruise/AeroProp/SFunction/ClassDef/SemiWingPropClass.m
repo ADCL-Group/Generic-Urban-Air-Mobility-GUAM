@@ -933,20 +933,37 @@ classdef SemiWingPropClass %#codegen
         h_v = obj.h_v(cm_b, alf);
         c4_v = obj.c4_v(cm_b, alf);
 
-        % Draw the wing 
-        x_h = (-obj.airfoil(:,1) + 0.25) + obj.c4_h(1)/obj.c_root; 
-        y_h = 0*obj.airfoil(:,1);
-        z_h= -obj.airfoil(:,2);
+        % Section in local wing frame
+        x_sec = (-obj.airfoil(:,1) + 0.25) + obj.c4_h(1)/obj.c_root;
+        z_sec = -obj.airfoil(:,2);
 
-        X_h = [x_h y_h z_h]';
-        X_v = obj.Ry(alf+obj.tilt_angle)*X_h;
-
-        nRows = numel(x_h);
+        nRows = numel(x_sec);
         nCols = numel(obj.yc)+1;
 
-        x_v = repmat(X_v(1,:)', 1, nCols)*diag([obj.cc; 0]) + h_v(1);
-        y_v = repmat(obj.sgn*[obj.yc; obj.yc(end)]', nRows, 1)   + c4_v(2);
-        z_v = repmat(X_v(3,:)', 1, nCols)*diag([obj.cc; 0]) + h_v(3);
+        % Chord scaling across span
+        C = diag([obj.cc; 0]);
+
+        % Build the FULL wing surface in a local wing/body frame
+        x_l = repmat(x_sec, 1, nCols) * C;
+        z_l = repmat(z_sec, 1, nCols) * C;
+        y_l = obj.sgn * repmat([obj.yc; obj.yc(end)]', nRows, 1);
+
+        % Apply dihedral in this local frame (body/wing fixed)
+        gam = obj.sgn * obj.gamma;
+
+        % rotate about local x-axis: affects (y,z)
+        y0 = y_l;
+        z0 = z_l;
+        y_l =  cos(gam).*y0 - sin(gam).*z0;
+        z_l =  sin(gam).*y0 + cos(gam).*z0;
+
+        % Draw the wing 
+        X_h = [x_l(:)'; y_l(:)'; z_l(:)'];
+        X_v = obj.Ry(alf+obj.tilt_angle)*X_h;
+
+        x_v = reshape(X_v(1,:), nRows, nCols) + h_v(1);
+        y_v = reshape(X_v(2,:), nRows, nCols) + c4_v(2);
+        z_v = reshape(X_v(3,:), nRows, nCols) + h_v(3);
 
         L = repmat([obj.Li(:,1); obj.Li(end,1)]' , nRows, 1); 
 
