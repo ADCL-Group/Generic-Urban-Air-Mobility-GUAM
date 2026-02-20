@@ -6,8 +6,8 @@ function rp = kinematic_inversion(xyz_req, yaw, g)
     % z acceleration
     ddot_z = xyz_req(3);
 
-    theta_lim = 30*pi/180;
-    phi_lim = 45*pi/180;
+    theta_lim = 15*pi/180;
+    phi_lim = 30*pi/180;
 
     den_min = 1e-3;
     den_th = (ddot_z - g);
