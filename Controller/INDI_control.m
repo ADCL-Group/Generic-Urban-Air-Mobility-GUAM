@@ -6,7 +6,6 @@ function [G, v, uMin, uMax, duMin, duMax, Wv, Wu, u_d, du_d] = INDI_control(FM_u
 %              1 2  3   4  5  6  7  8  9
     propIdx = [7 11 15 19 23 27 31 35 39]; % Index of derivative w.r.t prop speed
     tiltAngleX = [(pi/2) * ones(1, numEng-1), 0]; % Tilt angle w.r.t x body axis
-    % tiltAngleZ = deg2rad([0 8 -8 0 0 8 -8 0 90]);  % Tilt angle w.r.t z body axis
     tiltAngleZ = [zeros(1, numEng-1), pi/2];  % Tilt angle w.r.t z body axis
 
     % Extract data
@@ -112,10 +111,7 @@ function [G, v, uMin, uMax, duMin, duMax, Wv, Wu, u_d, du_d] = INDI_control(FM_u
     physRange = uPhysMax - uPhysMin;
 
     Wu = diag(1 ./ physRange);
-    % s = (1 - eta)^3;              % eta=1 hover -> s=0, eta=0 cruise -> s=1
     Wu(1:numEng-1,1:numEng-1) = Wu(1:numEng-1,1:numEng-1) * (1 + 5000*(1 - eta));
-
-    Wu(1:numEng-1,1:numEng-1) = Wu(1:numEng-1,1:numEng-1) * 1;   % punish vertical props 5000x more
     Wu(numEng,numEng)    = Wu(numEng,numEng) / 10;        % let pusher move more easily
     Wu(numEng+1:end,numEng+1:end) = Wu(numEng+1:end,numEng+1:end) * 0.5;
     
