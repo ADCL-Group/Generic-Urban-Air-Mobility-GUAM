@@ -237,7 +237,7 @@ m_m = [repmat(rotor_asbly_mass,1,4)  pusher_asbly_mass];
 
 p_T_e = [   -sin(i_p),  -sin(i_p),  -sin(i_p),  -sin(i_p),  1;
             0,  0,  0,  0,  0;
-            -1, -1, -1, -1, -sin(0)];
+            -1, -1, -1, -1, -sin(-1.77*pi/180)];
 
 % build and array of props
 Prop = cell(NP,1);
