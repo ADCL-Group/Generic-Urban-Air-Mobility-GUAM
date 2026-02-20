@@ -9,6 +9,9 @@ classdef TailClass
     del_e = 0;  % elevator deflection angle
     del_r = 0;  % rudder deflection angle
     h_b         % hinge location in the body frame
+    TailType = 'Conventional'; % 'Conventional' or 'Vtail'
+    ke = 0
+    kr = 0
 
   end
 
@@ -445,12 +448,13 @@ classdef TailClass
     function obj = set.del_e(obj, value)
 
       obj.del_e = value;
-      if (isa(obj.Left,'SemiWingPropClass'))
-        obj.Left.del_f = value;
-      end
-      if (isa(obj.Right,'SemiWingPropClass'))
-        obj.Right.del_f = value;
-      end
+      % if (isa(obj.Left,'SemiWingPropClass'))
+      %   obj.Left.del_f = value;
+      % end
+      % if (isa(obj.Right,'SemiWingPropClass'))
+      %   obj.Right.del_f = value;
+      % end
+      obj = obj.update_tail_deflections();
 
     end
 
@@ -461,97 +465,154 @@ classdef TailClass
     function obj = set.del_r(obj, value)
 
       obj.del_r = value;
-      if (isa(obj.Vert,'VerticalTailClass') && isa(obj.Vert.tail,'SemiWingPropClass'))
-        obj.Vert.tail.del_f = value;
-      end
+      % if (isa(obj.Vert,'VerticalTailClass') && isa(obj.Vert.tail,'SemiWingPropClass'))
+      %   obj.Vert.tail.del_f = value;
+      % end
+      obj = obj.update_tail_deflections();
+    end
 
+    function obj = update_tail_deflections(obj)
+        switch obj.TailType
+            case 'Conventional'
+                % Conventional tail: elevator goes to horizontal, rudder to vertical
+                if isa(obj.Left,'SemiWingPropClass')
+                    obj.Left.del_f = obj.del_e;
+                end
+                if isa(obj.Right,'SemiWingPropClass')
+                    obj.Right.del_f = obj.del_e;
+                end
+                if isa(obj.Vert,'VerticalTailClass') && isa(obj.Vert.tail,'SemiWingPropClass')
+                    obj.Vert.tail.del_f = obj.del_r;
+                end
+        
+            case 'Vtail'
+                % V-tail: mix elevator and rudder
+                Lambda = obj.Horz.gamma;
+        
+                eps_val = 1e-4;
+                if abs(sin(Lambda)) < eps_val
+                    % Conventional tail case
+                    obj.ke = 1.0;
+                    obj.kr = 0.0;
+                else
+                    % V-tail case
+                    obj.ke = 1*cos(Lambda); % For E/R equal authority: 1/(2*cos(Lambda))
+                    obj.kr = 1*sin(Lambda); % For E/R equal authority: 1/(2*sin(Lambda))
+                end
+                delta_L = obj.ke*obj.del_e + obj.kr*obj.del_r;
+                delta_R = obj.ke*obj.del_e - obj.kr*obj.del_r;
+        
+                if isa(obj.Left,'SemiWingPropClass')
+                    obj.Left.del_f = delta_L;
+                end
+                if isa(obj.Right,'SemiWingPropClass')
+                    obj.Right.del_f = delta_R;
+                end
+        end
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Tail aerodynamic forces and moments
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+    %% Tail aerodynamic forces and moments
     function obj = aero(obj, rho, uvw, om, cm_b, ders, epsilon_dw)
+        if nargin < 7
+            epsilon_dw = 0;
+        end
+        % velocity
+        if numel(uvw) == 3
+            v_b = uvw;
+            v_l = uvw;
+            v_r = uvw;
+        elseif numel(uvw) > 3
+            v_b = uvw(:,1);
+            v_l = uvw(:,2);
+            v_r = uvw(:,3);
+        else
+            error('the input v is the wrong size');
+        end
+        % [new] Include downwash seen by the tail
+        if epsilon_dw ~= 0
+            % magnitude of local velocity
+            V_l = norm(v_l);
+            V_r = norm(v_r);
+            V_b = norm(v_b);
+            % subtract downwash vertical component
+            v_l(3) = v_l(3) - V_l*sin(epsilon_dw);
+            v_r(3) = v_r(3) - V_r*sin(epsilon_dw);
+            v_b(3) = v_b(3) - V_b*sin(epsilon_dw);
+        end
+        
 
-      if nargin < 7
-         epsilon_dw = 0;
-      end
-
-      % velocity
-      if numel(uvw) == 3
-        v_b = uvw;
-        v_l = uvw;
-        v_r = uvw;
-      elseif numel(uvw) > 3
-        v_b = uvw(:,1);
-        v_l = uvw(:,2);
-        v_r = uvw(:,3);
-      else
-        error('the input v is the wrong size');
-      end
-
-      if epsilon_dw ~= 0
-        % magnitude of local velocity
-        V_l = norm(v_l);
-        V_r = norm(v_r);
-        V_b = norm(v_b);
-        % subtract downwash vertical component
-        v_l(3) = v_l(3) - V_l*sin(epsilon_dw);
-        v_r(3) = v_r(3) - V_r*sin(epsilon_dw);
-        v_b(3) = v_b(3) - V_b*sin(epsilon_dw);
-      end
-
-      %% get aerodynamics of each component
-      obj.Left = obj.Left.aero(rho, v_l, om, cm_b, ders);
-      obj.Right = obj.Right.aero(rho, v_r, om, cm_b, ders);
-      obj.Vert = obj.Vert.aero(rho, v_b, om, cm_b, ders);
-
-      %% sum the forces and moments
-      obj.Fx = obj.Left.Fx + obj.Right.Fx + obj.Vert.Fx;
-      obj.Fy = obj.Left.Fy + obj.Right.Fy + obj.Vert.Fy;
-      obj.Fz = obj.Left.Fz + obj.Right.Fz + obj.Vert.Fz;
-      obj.Mx = obj.Left.Mx + obj.Right.Mx + obj.Vert.Mx;
-      obj.My = obj.Left.My + obj.Right.My + obj.Vert.My;
-      obj.Mz = obj.Left.Mz + obj.Right.Mz + obj.Vert.Mz;
-  
-      if ders
-        obj.Fx_x = obj.Left.Fx_x + obj.Right.Fx_x + obj.Vert.Fx_x;
-        obj.Fy_x = obj.Left.Fy_x + obj.Right.Fy_x + obj.Vert.Fy_x;
-        obj.Fz_x = obj.Left.Fz_x + obj.Right.Fz_x + obj.Vert.Fz_x;
-        obj.Mx_x = obj.Left.Mx_x + obj.Right.Mx_x + obj.Vert.Mx_x;
-        obj.My_x = obj.Left.My_x + obj.Right.My_x + obj.Vert.My_x;
-        obj.Mz_x = obj.Left.Mz_x + obj.Right.Mz_x + obj.Vert.Mz_x;
-
-        % left side Props, right side props
-        obj.Fx_u(1,1:obj.NP) = [fliplr(obj.Left.Fx_u(1:obj.NP/2)) obj.Right.Fx_u(1:obj.NP/2)];
-        % elevator, rudder, tilt
-        obj.Fx_u(1,obj.NP+1:end) = [obj.Left.Fx_u(:,obj.NP/2+1)+obj.Right.Fx_u(obj.NP/2+1) obj.Vert.Fx_u(1) obj.Left.Fx_u(end)+obj.Right.Fx_u(end)];
-
-        % left side Props, right side props
-        obj.Fy_u(1,1:obj.NP) = [fliplr(obj.Left.Fy_u(1:obj.NP/2)) obj.Right.Fy_u(1:obj.NP/2)];
-        % elevator, rudder, tilt
-        obj.Fy_u(1,obj.NP+1:end) = [obj.Left.Fy_u(:,obj.NP/2+1)+obj.Right.Fy_u(obj.NP/2+1) obj.Vert.Fy_u(1) obj.Left.Fy_u(end)+obj.Right.Fy_u(end)];
-
-        % left side Props, right side props
-        obj.Fz_u(1,1:obj.NP) = [fliplr(obj.Left.Fz_u(1:obj.NP/2)) obj.Right.Fz_u(1:obj.NP/2)];
-        % elevator, rudder, tilt
-        obj.Fz_u(1,obj.NP+1:end) = [obj.Left.Fz_u(:,obj.NP/2+1)+obj.Right.Fz_u(obj.NP/2+1) obj.Vert.Fz_u(1) obj.Left.Fz_u(end)+obj.Right.Fz_u(end)];
-
-        % left side Props, right side props
-        obj.Mx_u(1,1:obj.NP) = [fliplr(obj.Left.Mx_u(1:obj.NP/2)) obj.Right.Mx_u(1:obj.NP/2)];
-        % elevator, rudder, tilt
-        obj.Mx_u(1,obj.NP+1:end) = [obj.Left.Mx_u(:,obj.NP/2+1)+obj.Right.Mx_u(obj.NP/2+1) obj.Vert.Mx_u(1) obj.Left.Mx_u(end)+obj.Right.Mx_u(end)];
-
-        % left side Props, right side props
-        obj.My_u(1,1:obj.NP) = [fliplr(obj.Left.My_u(1:obj.NP/2)) obj.Right.My_u(1:obj.NP/2)];
-        % elevator, rudder, tilt
-        obj.My_u(1,obj.NP+1:end) = [obj.Left.My_u(:,obj.NP/2+1)+obj.Right.My_u(obj.NP/2+1) obj.Vert.My_u(1) obj.Left.My_u(end)+obj.Right.My_u(end)];
-
-        % left side Props, right side props
-        obj.Mz_u(1,1:obj.NP) = [fliplr(obj.Left.Mz_u(1:obj.NP/2)) obj.Right.Mz_u(1:obj.NP/2)];
-        % elevator, rudder, tilt
-        obj.Mz_u(1,obj.NP+1:end) = [obj.Left.Mz_u(:,obj.NP/2+1)+obj.Right.Mz_u(obj.NP/2+1) obj.Vert.Mz_u(1) obj.Left.Mz_u(end)+obj.Right.Mz_u(end)];
-      end
+        % get aerodynamics of each component
+        obj.Left = obj.Left.aero(rho, v_l, om, cm_b, ders);
+        obj.Right = obj.Right.aero(rho, v_r, om, cm_b, ders);
+        obj.Vert = obj.Vert.aero(rho, v_b, om, cm_b, ders);
+        
+        % sum the forces and moments
+        obj.Fx = obj.Left.Fx + obj.Right.Fx + obj.Vert.Fx;
+        obj.Fy = obj.Left.Fy + obj.Right.Fy + obj.Vert.Fy;
+        obj.Fz = obj.Left.Fz + obj.Right.Fz + obj.Vert.Fz;
+        obj.Mx = obj.Left.Mx + obj.Right.Mx + obj.Vert.Mx;
+        obj.My = obj.Left.My + obj.Right.My + obj.Vert.My;
+        obj.Mz = obj.Left.Mz + obj.Right.Mz + obj.Vert.Mz;
+        
+        if ders
+            % Prop derivatives
+            obj.Fx_u(1,1:obj.NP) = [fliplr(obj.Left.Fx_u(1:obj.NP/2)) obj.Right.Fx_u(1:obj.NP/2)];
+            obj.Fy_u(1,1:obj.NP) = [fliplr(obj.Left.Fy_u(1:obj.NP/2)) obj.Right.Fy_u(1:obj.NP/2)];
+            obj.Fz_u(1,1:obj.NP) = [fliplr(obj.Left.Fz_u(1:obj.NP/2)) obj.Right.Fz_u(1:obj.NP/2)];
+            obj.Mx_u(1,1:obj.NP) = [fliplr(obj.Left.Mx_u(1:obj.NP/2)) obj.Right.Mx_u(1:obj.NP/2)];
+            obj.My_u(1,1:obj.NP) = [fliplr(obj.Left.My_u(1:obj.NP/2)) obj.Right.My_u(1:obj.NP/2)];
+            obj.Mz_u(1,1:obj.NP) = [fliplr(obj.Left.Mz_u(1:obj.NP/2)) obj.Right.Mz_u(1:obj.NP/2)];
+        
+            %  Tail control surfaces 
+            switch obj.TailType
+                case 'Vtail'        
+                    idx = obj.NP/2 + 1;
+        
+                    % Elevator input
+                    obj.Fx_u(1,obj.NP+1) = obj.ke*(obj.Left.Fx_u(idx) + obj.Right.Fx_u(idx));
+                    obj.Fy_u(1,obj.NP+1) = obj.ke*(obj.Left.Fy_u(idx) + obj.Right.Fy_u(idx));
+                    obj.Fz_u(1,obj.NP+1) = obj.ke*(obj.Left.Fz_u(idx) + obj.Right.Fz_u(idx));
+                    obj.Mx_u(1,obj.NP+1) = obj.ke*(obj.Left.Mx_u(idx) + obj.Right.Mx_u(idx));
+                    obj.My_u(1,obj.NP+1) = obj.ke*(obj.Left.My_u(idx) + obj.Right.My_u(idx));
+                    obj.Mz_u(1,obj.NP+1) = obj.ke*(obj.Left.Mz_u(idx) + obj.Right.Mz_u(idx));
+                    
+                    % Rudder input
+                    obj.Fx_u(1,obj.NP+2) = obj.kr*(obj.Left.Fx_u(idx) - obj.Right.Fx_u(idx));
+                    obj.Fy_u(1,obj.NP+2) = obj.kr*(obj.Left.Fy_u(idx) - obj.Right.Fy_u(idx));
+                    obj.Fz_u(1,obj.NP+2) = obj.kr*(obj.Left.Fz_u(idx) - obj.Right.Fz_u(idx));
+                    obj.Mx_u(1,obj.NP+2) = obj.kr*(obj.Left.Mx_u(idx) - obj.Right.Mx_u(idx));
+                    obj.My_u(1,obj.NP+2) = obj.kr*(obj.Left.My_u(idx) - obj.Right.My_u(idx));
+                    obj.Mz_u(1,obj.NP+2) = obj.kr*(obj.Left.Mz_u(idx) - obj.Right.Mz_u(idx));
+                otherwise
+                    % Elevator input
+                    obj.Fx_u(1,obj.NP+1) = obj.Left.Fx_u(:,obj.NP/2+1) + obj.Right.Fx_u(:,obj.NP/2+1);
+                    obj.Fy_u(1,obj.NP+1) = obj.Left.Fy_u(:,obj.NP/2+1) + obj.Right.Fy_u(:,obj.NP/2+1);
+                    obj.Fz_u(1,obj.NP+1) = obj.Left.Fz_u(:,obj.NP/2+1) + obj.Right.Fz_u(:,obj.NP/2+1);
+                    obj.Mx_u(1,obj.NP+1) = obj.Left.Mx_u(:,obj.NP/2+1) + obj.Right.Mx_u(:,obj.NP/2+1);
+                    obj.My_u(1,obj.NP+1) = obj.Left.My_u(:,obj.NP/2+1) + obj.Right.My_u(:,obj.NP/2+1);
+                    obj.Mz_u(1,obj.NP+1) = obj.Left.Mz_u(:,obj.NP/2+1) + obj.Right.Mz_u(:,obj.NP/2+1);
+        
+                    % Rudder input
+                    obj.Fx_u(1,obj.NP+2) = obj.Vert.Fx_u(:,1);
+                    obj.Fy_u(1,obj.NP+2) = obj.Vert.Fy_u(:,1);
+                    obj.Fz_u(1,obj.NP+2) = obj.Vert.Fz_u(:,1);
+                    obj.Mx_u(1,obj.NP+2) = obj.Vert.Mx_u(:,1);
+                    obj.My_u(1,obj.NP+2) = obj.Vert.My_u(:,1);
+                    obj.Mz_u(1,obj.NP+2) = obj.Vert.Mz_u(:,1); 
+            end
+        
+            % Tilt input
+            obj.Fx_u(1,obj.NP+3) = obj.Left.Fx_u(end) + obj.Right.Fx_u(end);
+            obj.Fy_u(1,obj.NP+3) = obj.Left.Fy_u(end) + obj.Right.Fy_u(end);
+            obj.Fz_u(1,obj.NP+3) = obj.Left.Fz_u(end) + obj.Right.Fz_u(end);
+            obj.Mx_u(1,obj.NP+3) = obj.Left.Mx_u(end) + obj.Right.Mx_u(end);
+            obj.My_u(1,obj.NP+3) = obj.Left.My_u(end) + obj.Right.My_u(end);
+            obj.Mz_u(1,obj.NP+3) = obj.Left.Mz_u(end) + obj.Right.Mz_u(end);
+        end
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

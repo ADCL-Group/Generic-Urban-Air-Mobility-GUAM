@@ -127,7 +127,7 @@ Wing = WingClass( wing_airfoil, ...
 WingProp = WingPropClass(Wing);
 WingProp.tilt_angle = i_w;
 
-%% === V-Tail (Horizontal) ===
+%% === V-Tail (Vertical) ===
 % vtail profile
 vtail_airfoil = readmatrix('tail_NACA0009_geom.txt');
 % vtail aerodynamic coefficients
@@ -137,6 +137,35 @@ NACA_0009_pp.alf = alf * pi/180;
 NACA_0009_pp.cl = spline(alf*pi/180,vtail_aero_coeff.Cl);
 NACA_0009_pp.cd = spline(alf*pi/180,vtail_aero_coeff.Cd);
 NACA_0009_pp.cm = spline(alf*pi/180,vtail_aero_coeff.Cm);
+% span 
+b_vt = 0.17 *scaling_factor * m_to_ft;
+% chord
+c_vt = [0.07 0.23] *scaling_factor * m_to_ft;
+% v. tail quarter chord location in the body frame
+vt_c4_b = [-0.5584; 0; 0.1631] * scaling_factor * m_to_ft;
+% mass of v. tail
+m_vt = 0.02200 *scaling_factor^3 * kg_to_slug;
+% inertia matrix
+Ivt = diag([0.00004 0.00008 0.00004]*scaling_factor^5) * kgm2_to_slugft2;
+% v. tail center of mass in the body frame
+vt_cm_b  = [-0.52088; 0.0; 0.05225] *scaling_factor * m_to_ft;
+% rudder location (decompose VTail here?)
+y_rudder = [0 0]*b_vt;
+% Dihedral angle
+gamma_vt = -90 * pi/180;
+% Build the vertical tail 
+vTail = VerticalTailClass( vtail_airfoil,...
+                           NACA_0009_pp,...
+                           b_vt, ...
+                           c_vt, ...
+                           y_rudder, ...
+                           vt_c4_b, ...
+                           m_vt, ...
+                           Ivt, ...
+                           vt_cm_b, ...
+                           gamma_vt);
+
+%% === V-Tail (Horizontal) ===
 % span and exposed span
 b_ht = 0.79400 *scaling_factor * m_to_ft;
 b_e_ht = 0.72000 *scaling_factor * m_to_ft;
@@ -169,36 +198,12 @@ hTail = WingClass( vtail_airfoil, ...
                    ht_c4_b, ...
                    m_ht, ...
                    Iht, ...
-                   ht_cm_b); 
+                   ht_cm_b);
 
-%% === V-Tail (Vertical) ===
-% span 
-b_vt = 0.17 *scaling_factor * m_to_ft;
-% chord
-c_vt = [0.07 0.23] *scaling_factor * m_to_ft;
-% v. tail quarter chord location in the body frame
-vt_c4_b = [-0.5584; 0; 0.1631] * scaling_factor * m_to_ft;
-% mass of v. tail
-m_vt = 0.02200 *scaling_factor^3 * kg_to_slug;
-% inertia matrix
-Ivt = diag([0.00004 0.00008 0.00004]*scaling_factor^5) * kgm2_to_slugft2;
-% v. tail center of mass in the body frame
-vt_cm_b  = [-0.52088; 0.0; 0.05225] *scaling_factor * m_to_ft;
-% rudder location (decompose VTail here?)
-y_rudder = [0 0]*b_vt;
-% Build the vertical tail 
-vTail = VerticalTailClass( vtail_airfoil,...
-                           NACA_0009_pp,...
-                           b_vt, ...
-                           c_vt, ...
-                           y_rudder, ...
-                           vt_c4_b, ...
-                           m_vt, ...
-                           Ivt, ...
-                           vt_cm_b);
 % Build the tail with horizontal and Vertical components
 Tail = TailClass(hTail, vTail);
 Tail.tilt_angle = i_t;
+Tail.TailType = 'Vtail';
 
 %% === Lift and Cruise Propellers ===
 % number of props
@@ -248,7 +253,7 @@ for ii = 1:NP
                          p_b(:,ii), ...
                          m_b(:,ii), ...
                          m_m(ii), ...
-                         10080, ... % max rpms
+                         8880, ... % max rpms
                          p_T_e(:,ii));
    Prop{ii} = prop;
 end

@@ -20,9 +20,9 @@ function [vehicle, CtrlTrim] = build_vehicle(SimIn)
     switch vehID
         case 1
             vehicle = build_Hero();
-            CtrlTrim.trim_vel = 0:2:50;
+            CtrlTrim.trim_vel = [0:2:21 22 23 24:2:35 36 37 38 39:2:50];
             CtrlTrim.V_TRC  = 5;  
-            CtrlTrim.V_hover_exit  = 10;        
+            CtrlTrim.V_hover_exit  = 10;
             CtrlTrim.V_hover_enter = 15;
             CtrlTrim.V_cruise_exit = 30;
             CtrlTrim.V_cruise_enter= 36;
