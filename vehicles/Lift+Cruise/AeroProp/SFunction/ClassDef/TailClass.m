@@ -471,7 +471,11 @@ classdef TailClass
     %% Tail aerodynamic forces and moments
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    function obj = aero(obj, rho, uvw, om, cm_b, ders)
+    function obj = aero(obj, rho, uvw, om, cm_b, ders, epsilon_dw)
+
+      if nargin < 7
+         epsilon_dw = 0;
+      end
 
       % velocity
       if numel(uvw) == 3
@@ -484,6 +488,17 @@ classdef TailClass
         v_r = uvw(:,3);
       else
         error('the input v is the wrong size');
+      end
+
+      if epsilon_dw ~= 0
+        % magnitude of local velocity
+        V_l = norm(v_l);
+        V_r = norm(v_r);
+        V_b = norm(v_b);
+        % subtract downwash vertical component
+        v_l(3) = v_l(3) - V_l*sin(epsilon_dw);
+        v_r(3) = v_r(3) - V_r*sin(epsilon_dw);
+        v_b(3) = v_b(3) - V_b*sin(epsilon_dw);
       end
 
       %% get aerodynamics of each component

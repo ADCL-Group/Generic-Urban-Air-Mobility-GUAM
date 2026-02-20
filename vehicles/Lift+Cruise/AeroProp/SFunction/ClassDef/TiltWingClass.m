@@ -642,7 +642,24 @@ classdef TiltWingClass %#codegen
       %% Compute the aerodynamics of the wing and tail
       %obj.Tail = obj.Tail.aero(rho,[v v_l v_r], [alf alf_l alf_r], beta, om, obj.cm_b);
       obj.WingProp = obj.WingProp.aero(rho, uvw, om, obj.cm_b, ders);
-      obj.Tail = obj.Tail.aero(rho,uvw, om, obj.cm_b, ders); % assume no wing wake affecting tail
+
+      L_total = sum(obj.WingProp.Left.Li) + sum(obj.WingProp.Right.Li);
+      V = norm(uvw);
+      q = 0.5*rho*V^2;
+      if q < 1e-6  % effectively zero airspeed
+         epsilon_dw = 0;
+      else
+         S_w    = obj.WingProp.Wing.b_e * ((obj.WingProp.Wing.c_root + obj.WingProp.Wing.c_tip)/2);
+         CL_w   = L_total / (q * S_w);
+         lt     = abs(obj.Tail.Horz.c4_b(1) - obj.WingProp.Wing.c4_b(1));
+         b      = obj.WingProp.Wing.b_e;
+         AR     = obj.WingProp.Wing.b_e / ((obj.WingProp.Wing.c_root + obj.WingProp.Wing.c_tip)/2);
+         distance_factor = 1/(1 + 2*(lt/b));
+         epsilon_dw = (2*CL_w)/(pi*AR) * distance_factor;
+      end
+        
+      obj.Tail = obj.Tail.aero(rho, uvw, om, obj.cm_b, ders, epsilon_dw);
+      % obj.Tail = obj.Tail.aero(rho,uvw, om, obj.cm_b, ders); % assume no wing wake affecting tail
 
       %% Sum the wing and tail aerodynamic forces and moments
       obj.Fx = obj.WingProp.Fx + obj.Tail.Fx;
