@@ -112,7 +112,10 @@ function [G, v, uMin, uMax, duMin, duMax, Wv, Wu, u_d, du_d] = INDI_control(FM_u
     physRange = uPhysMax - uPhysMin;
 
     Wu = diag(1 ./ physRange);
-    Wu(1:numEng-1,1:numEng-1) = Wu(1:numEng-1,1:numEng-1) * 5000;   % punish vertical props 50x more
+    % s = (1 - eta)^3;              % eta=1 hover -> s=0, eta=0 cruise -> s=1
+    Wu(1:numEng-1,1:numEng-1) = Wu(1:numEng-1,1:numEng-1) * (1 + 5000*(1 - eta));
+
+    Wu(1:numEng-1,1:numEng-1) = Wu(1:numEng-1,1:numEng-1) * 1;   % punish vertical props 5000x more
     Wu(numEng,numEng)    = Wu(numEng,numEng) / 10;        % let pusher move more easily
     Wu(numEng+1:end,numEng+1:end) = Wu(numEng+1:end,numEng+1:end) * 0.5;
     
