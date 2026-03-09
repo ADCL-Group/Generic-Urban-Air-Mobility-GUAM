@@ -299,15 +299,18 @@ for i = 1:numPts
            GRAV*cos(th)*cos(phi)];
   eta  = [phi; th; psi];
 
-  Rot = Rx(phi)*Ry(th);
-  vb = Rot*vbar;
-
+  % For initial conditions we need vbar
+  % Rot = Rx(phi)*Ry(th);
+  % vb = Rot*vbar;
 
   del = U(1:Ns);
   omp = U(Ns+1:Ns+Np);
 
-  XU0_interp(:,i) = [ vb; om; ab; eta; del(:); omp(:) ];
+  XU0_interp(:,i) = [ vbar; om; ab; eta; del(:); omp(:) ];
 end
+
+XU0_interp = repmat(XU0_interp, 1, 1, 3);
+WH = [WH-1e-6, WH, WH+1e-6];
 
 save(out_file, 'XU0_interp', 'R', 'UH', 'WH', '-v7.3');
 
