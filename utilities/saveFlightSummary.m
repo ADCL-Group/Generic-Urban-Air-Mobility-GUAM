@@ -8,7 +8,7 @@ function saveFlightSummary(SimOut, SimPar, SimIn, PilotInputs, FileName)
     Units = SimIn.Units;
 
     Fail = [];
-    if isstruct(SimPar) && isfield(SimPar, 'Value') && ...
+    if isstruct(SimPar) && ...
             isstruct(SimPar.Value) && isfield(SimPar.Value, 'Fail')
         Fail = SimPar.Value.Fail;
     end
