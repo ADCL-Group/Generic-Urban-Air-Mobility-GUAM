@@ -66,6 +66,10 @@ SimIn.stopTime = stopTime;
 % setup the baseline_1 Controller gains
 SimIn.Control = setupControl(SimIn);
 
+if SimIn.ctrlMode == 3
+    SimIn.Control.ADCL = setupAutonCtrl(SimIn);
+end
+
 % Set initial conditions from the reference trajectory
 SimIn.IC          = setupInitialConditions(SimIn,[]);
 SimIn.EOM         = setupEOM(SimIn);  % Must come after Env and IC's
