@@ -173,8 +173,9 @@ for ii = 1:numel(R)
                 Q                   = Q_cruise;
             end
 
-            RHB = Rx(x0(2)) * Ry(x0(1));
-            vH  = RHB' * [UH(jj) 0 WH(kk)]';
+            % RHB = Rx(x0(2)) * Ry(x0(1));
+            % vH  = RHB' * [UH(jj) 0 WH(kk)]';
+            vH  = [UH(jj) 0 WH(kk)]';
 
             TRIM_POINT = [vH(1) vH(3) R]; 
 
