@@ -14,7 +14,7 @@ userStruct.variants.propType = 2; % 1=None, 2=FirstOrder, 3=SecondOrder, 4=First
 userStruct.variants.refInputType = 4; % 1=FOUR_RAMP, 2=ONE_RAMP, 3=Timeseries, 4=Piecewise Bezier, 5=Default(doublets)
 userStruct.variants.turbType = 1; % 1=Off, 2=Light, 3=Moderate, 4=Severe
 
-userStruct.variants.ctrlMode = CtrlModeEnum.Autonomous; % 1=LocalPilot, 2=RemotePilot, 3=Autonomous
+userStruct.variants.ctrlMode = 3; % 1=LocalPilot, 2=RemotePilot, 3=Autonomous
 
 userStruct.switches.AeroPropDeriv = 1; % 1 or 0
 
