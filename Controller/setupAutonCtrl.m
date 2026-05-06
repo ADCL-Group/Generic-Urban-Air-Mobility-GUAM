@@ -58,8 +58,8 @@ Out.FW.TECS.K = 0.1;
 Out.FW.TECS.Kff = 1;
 
 % Pitch limits
-Out.FW.TECS.max_pitch = 28 * SimIn.Units.deg;
-Out.FW.TECS.min_pitch = -28 * SimIn.Units.deg;
+Out.FW.TECS.max_pitch = 15 * SimIn.Units.deg;
+Out.FW.TECS.min_pitch = -15 * SimIn.Units.deg;
 
 % ------------------------------------------------------------
 % Throttle dynamics
@@ -101,7 +101,7 @@ Out.FW.L1.lookahead_time = 5;
 Out.FW.L1.min_hover = 20 * SimIn.Units.ft;
 
 % Maximum commanded bank angle
-Out.FW.L1.max_bank = 40 * SimIn.Units.deg;
+Out.FW.L1.max_bank = 28.5 * SimIn.Units.deg;
 
 % ------------------------------------------------------------
 % Hover (Multicopter)
