@@ -54,14 +54,7 @@ userStruct.trajFile = ''; % Delete user specified PW Bezier file
 simSetup;
 open(model);
 
-% Update trim conditions interpolation to make it compatible with
-% simulink
-XU0_single = SimIn.Control.trim.XU0_interp;
-SimIn.Control.trim.XU0_interp = repmat(XU0_single, 1, 1, 3);
-baseW = SimIn.Control.trim.WH;
-SimIn.Control.trim.WH = [baseW-1e-6, baseW, baseW+1e-6];
-
-setupSFunction(SimIn,model,false);
+setupSFunction(SimIn,model);
 SimIn.stopTime = 1000;
 open(model);
 

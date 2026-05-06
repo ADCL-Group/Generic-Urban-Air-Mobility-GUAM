@@ -108,9 +108,9 @@ end
 
 % Loop through trim points
 numPts = numel(UH)*numel(WH)*numel(R);
+count = 0;
 for ii = 1:numel(R)
     for kk = 1:numel(WH)
-        count = 0;
         for jj = 1:numel(UH)
             count = count + 1;
             fprintf('Trimming point %d/%d  (UH = %.1f ft/s, WH = %.1f, R = %g)\n', ...
@@ -276,42 +276,48 @@ for ii = 1:numel(R)
 end
 
 % Build XU0_interp
-XEQ_slice = XEQ_All;
-numPts   = size(XEQ_slice,1);
-XU0_interp = zeros(12 + Ns + Np, numPts);
+numUH = size(XEQ_All, 1);
+numWH = size(XEQ_All, 3);
 
-for i = 1:numPts
-  X = XEQ_slice(i,1:8);
-  U = XEQ_slice(i,9:end);
+XU0_interp = zeros(12 + Ns + Np, numUH, numWH);
 
-  ubar = X(1);
-  wbar = X(2);
-  th   = X(4);
-  phi  = X(5);
-  psi  = 0;
-  p    = X(6);
-  q    = X(7);
-  r    = X(8);
-
-  vbar = [ubar; 0; wbar];
-  om   = [p; q; r];
-  ab   = [-GRAV*sin(th);
-           GRAV*cos(th)*sin(phi);
-           GRAV*cos(th)*cos(phi)];
-  eta  = [phi; th; psi];
-
-  % For initial conditions we need vbar
-  % Rot = Rx(phi)*Ry(th);
-  % vb = Rot*vbar;
-
-  del = U(1:Ns);
-  omp = U(Ns+1:Ns+Np);
-
-  XU0_interp(:,i) = [ vbar; om; ab; eta; del(:); omp(:) ];
+for k = 1:numWH
+    XEQ_slice = XEQ_All(:,:,k);
+    for i = 1:numUH
+      X = XEQ_slice(i,1:8);
+      U = XEQ_slice(i,9:end);
+    
+      ubar = X(1);
+      wbar = X(2);
+      th   = X(4);
+      phi  = X(5);
+      psi  = 0;
+      p    = X(6);
+      q    = X(7);
+      r    = X(8);
+    
+      vbar = [ubar; 0; wbar];
+      om   = [p; q; r];
+      ab   = [-GRAV*sin(th);
+               GRAV*cos(th)*sin(phi);
+               GRAV*cos(th)*cos(phi)];
+      eta  = [phi; th; psi];
+    
+      % For initial conditions we need vbar
+      % Rot = Rx(phi)*Ry(th);
+      % vb = Rot*vbar;
+    
+      del = U(1:Ns);
+      omp = U(Ns+1:Ns+Np);
+    
+      XU0_interp(:,i,k) = [vbar; om; ab; eta; del(:); omp(:)];
+    end
 end
 
-XU0_interp = repmat(XU0_interp, 1, 1, 3);
-WH = [WH-1e-6, WH, WH+1e-6];
+if numWH == 1
+    XU0_interp = repmat(XU0_interp, 1, 1, 3);
+    WH = [WH-1e-6, WH, WH+1e-6];
+end
 
 save(out_file, 'XU0_interp', 'R', 'UH', 'WH', '-v7.3');
 
