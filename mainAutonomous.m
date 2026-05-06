@@ -55,7 +55,12 @@ goalRadius = rn/4; % radius of the goal area around the goal wpt
 
 wpts = [start; goal];
 
-[traj, ~, ~] = FMTWaypoints(planMap, limits, wpts([1 end],:), N, rn, goalRadius, w, flightParams);
+pad = 300;
+limits = [expandLimits(mapLimits, wpts(:,1:3), pad); 0 2*pi];
+limits(3,1) = 50;
+limits(3,2) = 500; %in m
+
+[traj, ~, ~] = FMTWaypoints(planMap, limits, wpts, N, rn, goalRadius, w, flightParams);
 
 % Smooth the trajectory
 smoothedTraj = smoothTrajectory( flightParams, limits, smoothMap, traj, wpts, goalRadius);
@@ -167,13 +172,15 @@ flightTrajectory = SimIn.PathPlan.smoothedTraj(:,1:3);
 trajLen = size(SimIn.PathPlan.smoothedTraj,1);
 resetFlag = 0;
 
-% Execute the model
-sim(model);
+setupSFunction(SimIn,model,false);
 
-%% plot
-
-SimOut = logsout{1}.Values;
-plotFlightSummary(SimOut, SimIn.Units, [], SimIn.PathPlan, false);
+try
+    sim(model);
+catch
+    % plot
+    SimOut = logsout{1}.Values;
+    plotFlightSummary(SimOut, SimIn.Units, [], SimIn.PathPlan, false);
+end
 
 % % % Create an animation of the flight
 % % Animate_SimOut;
