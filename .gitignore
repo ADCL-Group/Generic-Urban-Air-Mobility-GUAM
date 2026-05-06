@@ -7,3 +7,6 @@ vehicles/Lift+Cruise/AeroProp/SFunction/PropCoef/APCSF_10x4p7_scaled_coef.mat
 vehicles/Lift+Cruise/Trim/*.mat
 vehicles/Lift+Cruise/obj/linux
 vehicles/Lift+Cruise/obj/LpC_Scaled_wrapper_sfunc.mexa64
+
+# Auto-generated Simulink ROS bus conversion functions
++bus_conv_fcns/
