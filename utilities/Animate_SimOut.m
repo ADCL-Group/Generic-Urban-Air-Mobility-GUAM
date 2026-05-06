@@ -63,7 +63,21 @@ end
 
 % Check if tiltwing class object exists, otherwise create it (reqd for draw methods)
 if ~exist('tiltwing','var')
-    tiltwing = build_vehicle(struct('vehID',-1));
+    
+    if isfield(SimIn, 'model')
+        % If the model is already in SimIn, just use it
+        tiltwing = SimIn.model;
+    else
+        % Otherwise, determine the ID and build it
+        if isfield(SimIn, 'vehID')
+            currentID = SimIn.vehID;
+        else
+            currentID = -1;
+        end
+        
+        tiltwing = build_vehicle(struct('vehID', currentID));
+    end
+    
 end
 % *************************************************************************
 
