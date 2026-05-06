@@ -1,27 +1,35 @@
 clc; %close all; clearvars;
 setupPath;
-setupVariantStruct;
-tiltwing = build_vehicle(struct('vehID',-1,'ScalingFactor',1));
-trimData = load('Trim_GUAM_XU0_interp.mat', 'XU0_interp');
-XU0 = trimData.XU0_interp;
+path(genpath(fullfile(getenv('GVSActiveRootDir'), 'vehicles/Lift+Cruise')), path);
+Units = setUnits('ft','slug');
+vtol = build_vehicle(struct('vehID',-1,'ScalingFactor',1));
 
-% Get a fwd vel 
-uUser = input('Enter u velocity (ft/s): ');
-uGrid = XU0(1,:);
-uUser = max(min(uUser, uGrid(end)), uGrid(1));
+trimData = load('Trim_GUAM_XU0_interp.mat', 'XU0_interp', 'UH', 'WH');
+XU0 = trimData.XU0_interp;
+UH  = trimData.UH; WH  = trimData.WH;
+
+XU0mid = XU0(:,:,1);
+
+% Inputs
+uUser = 95 * Units.knot; 
+wUser = 0 * Units.ft/Units.s;
+
+uUser = max(min(uUser, max(UH)), min(UH));
+wUser = max(min(wUser, max(WH)), min(WH));
 
 % Interpolate trim conditions
-trimXU = interp1(uGrid, XU0.', uUser, 'linear', 'extrap').';
+XU0_perm = permute(XU0, [3, 1, 2]);
+temp = interp1(WH, XU0_perm, wUser, 'linear', 'extrap'); temp = squeeze(temp);
+trimXU = interp1(UH, temp.', uUser, 'linear', 'extrap').';
 
 NS = 4; % flap, aileron, elev, rud
 NP = 9; % 8 vertical + 1 pusher
 
-[Alon, Blon, Clon, Dlon, Alat, Blat, Clat, Dlat, A, B] = getSSBody(tiltwing, trimXU, NS, NP);
+[Alon, Blon, Clon, Dlon, Alat, Blat, Clat, Dlat, A, B] = getSSBody(vtol, trimXU, NS, NP, Units);
 
-function [Alon, Blon, Clon, Dlon, Alat, Blat, Clat, Dlat, A, B] = getSSBody(tiltwing, trimVector, NS, NP)
+function [Alon, Blon, Clon, Dlon, Alat, Blat, Clat, Dlat, A, B] = getSSBody(tiltwing, trimVector, NS, NP, Units)
 
 rho = 0.0023769; % slugs/ft^3
-g = 32.17405; % ft/sec^2
 
 % define some unit vectors, rotations, and skew symmetric matrix functions
 e1 = [1; 0; 0];
@@ -34,12 +42,12 @@ Rz = @(x)  [cos(x) sin(x) 0; -sin(x) cos(x) 0; 0 0 1];
 hat = @(x) [ 0 -x(3) x(2); x(3) 0 -x(1); -x(2) x(1) 0];
 
 % Load in the equilibrium state
-u0 = trimVector(1); v0 = trimVector(2); w0 = trimVector(3);
+vbar0 = trimVector(1:3);      % heading-frame trim velocity
 p0 = trimVector(4); q0 = trimVector(5); r0 = trimVector(6);
 % ax0 = trimVector(7); ay0 = trimVector(8); az0 = trimVector(9);
 phi0 = trimVector(10); th0 = trimVector(11); psi0 = trimVector(12);
 
-vb0 = [u0; v0; w0];
+vb0 = Rx(phi0)*Ry(th0)*vbar0;
 om0 = [p0; q0; r0];
 
 % Load in equalibrium controls
@@ -81,7 +89,7 @@ J = tiltwing.I;
 % Rotation matrices
 Rnb = (Rx(phi0)*Ry(th0)*Rz(psi0));
 Rbn = Rnb';                             
-g_n = [0;0;g];
+g_n = [0;0;Units.g0];
 
 % Derivatives of the rotation matrices
 Rnb_phi = -Rx(phi0)*hat(e1)*Ry(th0)*Rz(psi0);
