@@ -13,6 +13,7 @@ classdef VerticalTailClass
     mass  % mass of the vertical tail
     I     % Inertial matrix of the vertical tail
     cm_b  % center of mass in the body frame
+    gamma
 
     %%%%%% Aerodynamic Forces and moments %%%%%%%%
 
@@ -92,9 +93,13 @@ classdef VerticalTailClass
     %            7 - mass
     %            8 - Inertia matrix
     %            9 - center of mass in body frame
+    %            10- Gamma, dihedral
+  
+      % Default gamma (vertical tail)
+      
   
       %% Set the vertical tail parameters
-      if nargin == 9
+      if nargin == 9 || nargin == 10
 
         % Assign vertical tail parameters
         airfoil = varargin{1};
@@ -104,13 +109,19 @@ classdef VerticalTailClass
         y_rudder = varargin{5};
         obj.c4_b   = varargin{6};
 
+        if nargin == 10
+           obj.gamma = varargin{10};
+        else
+           obj.gamma = 90 * pi/180;
+        end
+
         % Buid the vertical tail
         obj.tail = SemiWingPropClass( 'Right', ...
                                       airfoil, ...
                                       coeff, ...
                                       b, ...
                                       c, ...
-                                      pi/2,... % dihedral = 90 deg
+                                      obj.gamma,... % dihedral = 90 deg
                                       y_rudder, ...
                                       [0 0], ... % no aileron
                                       obj.c4_b);
@@ -231,6 +242,11 @@ classdef VerticalTailClass
       x_vt =  x_vt_*cos(alf) + z_vt_*sin(alf);
       z_vt = -x_vt_*sin(alf) + z_vt_*cos(alf);
 
+      gam = obj.gamma-pi/2;
+        Ytmp = y_vt*cos(gam) - z_vt*sin(gam);
+        Ztmp = y_vt*sin(gam) + z_vt*cos(gam);
+        y_vt = Ytmp;
+        z_vt = Ztmp;
 
       Xtv = x_vt + c4_v(1);
       Ztv = z_vt + c4_v(3);

@@ -40,7 +40,7 @@ flownTraj_trimmed_all= cell(nFlights, 1);
 failIdxAil_all       = cell(nFlights, 1);
 
 % Settings
-weights = [0.6, 0.4]; % [w_T, w_A]
+weights = [0.6, 0.4]; % [w_T, w_E]
 
 % The Simulation's IC was configured to start approximatedly 10secs before
 % the actual start of the trajectory with the same speed and heading. So
@@ -97,17 +97,19 @@ for k = 1:nFlights
     flownTraj_trimmed_all{k} = flownTraj_trimmed;  % cache
 
     % Failure data
-    initTimes = Fail.Surfaces.InitTime;
-    aileronInit = initTimes(1:2);
-    failIdxAil = find(aileronInit > 0, 1); % failIdxAil is 1 if is left, 2 if is right
-    failIdxAil_all{k} = failIdxAil;
-    failTime = aileronInit(failIdxAil);
-    timeFailIdx = find(time == failTime);
-    if ~isempty(timeFailIdx)
-        failVal = SimOut.Vehicle.SurfAct.Position.Data(timeFailIdx, failIdxAil) * 180/pi;
-    else
-        failVal = NaN;
+    failIdxAil = 1; 
+
+    if exist('Fail', 'var') && isfield(Fail, 'Surfaces')
+        initTimes = Fail.Surfaces.InitTime;
+        aileronInit = initTimes(1:2);
+        foundIdx = find(aileronInit > 0, 1);
+        
+        if ~isempty(foundIdx)
+            failIdxAil = foundIdx;
+        end
     end
+    
+    failIdxAil_all{k} = failIdxAil;
 
     % Trajectory tracking metrics
     [minDistVec, minError, maxError, meanError, perctTunnel] = getTrajectoryError(flownTraj_trimmed, desiredTraj);
@@ -162,7 +164,7 @@ for k = 1:nFlights
 
     E_tilde_raw = rawWtot(k);
 
-    PI_raw = getPerfIdx(T_tilde_raw, A_tilde_raw, weights);
+    PI_raw = getPerfIdx(T_tilde_raw, E_tilde_raw, weights);
 
     % Create summary table with key metrics
     failSide = ["Left", "Right"];
@@ -171,8 +173,6 @@ for k = 1:nFlights
     flightTable = table( ...
         string(dataFile), ...
         isCrash, ...
-        failTime, ...
-        failVal, ...
         minError, maxError, meanError, perctTunnel, ...
         T_tilde_raw, A_tilde_raw, E_tilde_raw, PI_raw, ...
         {Wx_all}, {Wtot_all}, ...
@@ -181,8 +181,6 @@ for k = 1:nFlights
         'VariableNames', { ...
             'File', ...
             'IsCrash', ...
-            'FailTime_s', ...
-            'FailedAileron', ...
             'MinTrackErr_m', 'MaxTrackErr_m', ...
             'MeanTrackErr_m', 'PerInside30m', ...
             'T_tilde', 'A_tilde', 'E_tilde', 'PerformanceIndex', ...
@@ -206,7 +204,7 @@ for k = 1:nFlights
     E_tilde = rawWtot(k) / Cnorm_efft;
     A_tilde = getCtrlActIdx(surfaceRates_all{k}, time_trimmed_all{k}, Cnorm_ctrl, failIdxAil_all{k} == 1);
     T_tilde = getTrackingPerfIdx(desiredTraj_all{k}, flownTraj_trimmed_all{k}, time_trimmed_all{k}, Cnorm_pos);
-    PI = getPerfIdx(T_tilde, A_tilde, weights);
+    PI = getPerfIdx(T_tilde, E_tilde, weights);
 
     % Overwrite entries in the table
     allFlightTables{k}.T_tilde = T_tilde;

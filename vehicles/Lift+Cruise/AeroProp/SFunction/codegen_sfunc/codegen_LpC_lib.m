@@ -20,7 +20,7 @@ ARGS = cell(6,1);
 ARGS{1} = coder.typeof(double(0)); % rho
 ARGS{2} = coder.typeof(ones(3,1)); % V_b
 ARGS{3} = coder.typeof(ones(3,1)); % om_b
-ARGS{4} = coder.typeof(ones(1,9)); % om_prop
+ARGS{4} = coder.typeof(ones(1,SimIn.numEngines)); % om_prop
 ARGS{5} = coder.typeof(ones(4,1)); % surf
 ARGS{6} = coder.typeof(logical(0)); % ders
 

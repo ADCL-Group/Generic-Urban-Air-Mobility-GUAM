@@ -141,6 +141,12 @@ if ~isfield(userStruct.variants.connection,'portOut') || isempty(userStruct.vari
   userStruct.variants.connection.portOut = 5501;
 end
 
+if isfield(userStruct,'vehID') && ~isempty(userStruct.vehID)
+    SimIn.vehID = userStruct.vehID;
+else
+    SimIn.vehID = 0;
+end
+
 
 % clear vehDir rootDir bExist;
 clear rootDir bExist;

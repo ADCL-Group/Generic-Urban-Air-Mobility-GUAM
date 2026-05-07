@@ -15,9 +15,12 @@ userStruct.variants.actType = 4; % 1=None, 2=FirstOrder, 3=SecondOrder, 4=FirstO
 userStruct.variants.propType = 2; % 1=None, 2=FirstOrder, 3=SecondOrder, 4=FirstOrderFailSurf
 userStruct.variants.refInputType = 4; % 1=FOUR_RAMP, 2=ONE_RAMP, 3=Timeseries, 4=Piecewise Bezier, 5=Default(doublets)
 userStruct.variants.turbType = 1; % 1=Off, 2=Light, 3=Moderate, 4=Severe
-% userStruct.variants.ctrlMode = CtrlModeEnum.LocalPilot; % 1=LocalPilot, 2=RemotePilot, 3=Autonomous
+% userStruct.variants.ctrlMode = 1; % 1=LocalPilot, 2=RemotePilot, 3=Autonomous
+% userStruct.variants.connection.address = '192.168.1.4';
 
 userStruct.switches.AeroPropDeriv = 1; % 1 or 0
+
+userStruct.vehID = 0; % 0=GUAM, 1=HERO
 
 %% initial conditions
 % target = struct('tas', 0, 'gndtrack', 0,'stopTime', 30);
@@ -50,25 +53,6 @@ userStruct.trajFile = ''; % Delete user specified PW Bezier file
 % set initial conditions
 simSetup;
 open(model);
-
-if SimIn.ScalingFactor > 0
-    % generate the scaled trim table
-    trimFname = Trim_Case_7_Scale_x(SimIn);
-    SimIn.trimFile = trimFname;
-
-    % re-setup the sim
-    simSetup;
-
-    % Update trim conditions interpolation to make it compatible with
-    % simulink
-    XU0_single = SimIn.Control.trim.XU0_interp;
-    SimIn.Control.trim.XU0_interp = repmat(XU0_single, 1, 1, 3);
-    baseW = SimIn.Control.trim.WH;
-    SimIn.Control.trim.WH = [baseW-1e-6, baseW, baseW+1e-6];  
-
-    % compile the new S-Function
-    mex_LpC_sfunc(false);
-end
 
 setupSFunction(SimIn,model);
 SimIn.stopTime = 1000;

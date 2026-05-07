@@ -1,9 +1,12 @@
 function [G, v, uMin, uMax, duMin, duMax, Wv, Wu, u_d, du_d] = INDI_control(FM_u, I, m, reference, observed, euler, eta, limits, u_curr, om_prop_bias, alpha, dt)
 
+    varsSize = size(limits,2);
+    numEng = varsSize - 4;
 
+%              1 2  3   4  5  6  7  8  9
     propIdx = [7 11 15 19 23 27 31 35 39]; % Index of derivative w.r.t prop speed
-    tiltAngleX = [(pi/2) * ones(1, 8), 0]; % Tilt angle w.r.t x body axis
-    tiltAngleZ = deg2rad([0 8 -8 0 0 8 -8 0 90]);  % Tilt angle w.r.t z body axis
+    tiltAngleX = [(pi/2) * ones(1, numEng-1), 0]; % Tilt angle w.r.t x body axis
+    tiltAngleZ = [zeros(1, numEng-1), pi/2];  % Tilt angle w.r.t z body axis
 
     % Extract data
     pqr_dot_ref = reference(1:3);
@@ -22,29 +25,29 @@ function [G, v, uMin, uMax, duMin, duMax, Wv, Wu, u_d, du_d] = INDI_control(FM_u
     Vz_dot_o = observed(4);
     V_dot_o = observed(5);
 
-    om_prop_curr = u_curr(1:9);
-    delta_curr = u_curr(10:end);
+    om_prop_curr = u_curr(1:numEng);
+    delta_curr = u_curr(numEng + 1:end);
 
-    om_prop_hi = limits(1, 1:9)';
-    om_prop_lo = limits(2, 1:9)';
-    surf_hi    = limits(1, 10:end)';
-    surf_lo    = limits(2, 10:end)';
-    ompdot_max = (100/limits(3,1))*limits(3,1:9)'; % Scale it to 230rad/s
-    deldot_max = (7/limits(3,10)).*limits(3,10:end)'; % Scale it to 7rad/s
+    om_prop_hi = limits(1, 1:numEng)';
+    om_prop_lo = limits(2, 1:numEng)';
+    surf_hi    = limits(1, numEng + 1:end)';
+    surf_lo    = limits(2, numEng + 1:end)';
+    ompdot_max = (100/limits(3,1))*limits(3,1:numEng)'; % Scale it to 230rad/s
+    deldot_max = (7/limits(3,numEng + 1)).*limits(3,numEng + 1:end)'; % Scale it to 7rad/s
     % The rate of the control surface must be close to x3wn of the model
     % reference that way the control can keep up with the pilot commands.
     % In a physical instance we should change the wn of the reference model
     % to something slower so the physical actuators can keep up with it
 
     % Force and moment contributions per propeller input
-    Fx_u = FM_u(1, propIdx);
-    Fy_u = FM_u(2, propIdx);
-    Fz_u = FM_u(3, propIdx);
+    Fx_u = FM_u(1, propIdx(1:numEng));
+    Fy_u = FM_u(2, propIdx(1:numEng));
+    Fz_u = FM_u(3, propIdx(1:numEng));
     dT_domega = sqrt(Fx_u.^2 + Fy_u.^2 + Fz_u.^2); % Total derivative of thrust w.r.t prop speed
 
-    Mx_u = FM_u(4, propIdx);
-    My_u = FM_u(5, propIdx);
-    Mz_u = FM_u(6, propIdx);
+    Mx_u = FM_u(4, propIdx(1:numEng));
+    My_u = FM_u(5, propIdx(1:numEng));
+    Mz_u = FM_u(6, propIdx(1:numEng));
 
     % Moment Control Allocation (MCA) Matrix
     MCA_prop_M = [Mx_u; My_u; Mz_u]; % Propeller contribution to moments
@@ -55,6 +58,9 @@ function [G, v, uMin, uMax, duMin, duMax, Wv, Wu, u_d, du_d] = INDI_control(FM_u
     % Propeller contribution to vertical force
     MCA_prop_F =  [eta 0;0 (1-eta)]*[-dT_domega .* sin(euler(2) + tiltAngleX) .* cos(tiltAngleZ); dT_domega .* cos(alpha + tiltAngleX)];
     
+    MCA_prop_M(:,end) = 0;
+    MCA_prop_F(1,end) = 0;
+
     % Zero block for force contribution of control surfaces
     zero_block = zeros(size(MCA_prop_F, 1), size(MCA_aero_M, 2));
 
@@ -105,9 +111,9 @@ function [G, v, uMin, uMax, duMin, duMax, Wv, Wu, u_d, du_d] = INDI_control(FM_u
     physRange = uPhysMax - uPhysMin;
 
     Wu = diag(1 ./ physRange);
-    Wu(1:8,1:8) = Wu(1:8,1:8) * 50;   % punish vertical props 50x more
-    Wu(9,9)    = Wu(9,9) / 10;        % let pusher move more easily
-    Wu(10:end,10:end) = Wu(10:end,10:end) * 0.5;
+    Wu(1:numEng-1,1:numEng-1) = Wu(1:numEng-1,1:numEng-1) * (1 + 5000*(1 - eta));
+    Wu(numEng,numEng)    = Wu(numEng,numEng) / 10;        % let pusher move more easily
+    Wu(numEng+1:end,numEng+1:end) = Wu(numEng+1:end,numEng+1:end) * 0.5;
     
     du_d = u_d - u_curr;      % "incremental" desired (INDI)
 end

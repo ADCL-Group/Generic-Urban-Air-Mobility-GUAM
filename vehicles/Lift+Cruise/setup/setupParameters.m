@@ -130,11 +130,11 @@ SimPar.Environment.Winds.VelDtH_wHh = SimIn.Environment.Winds.VelDtH_wHh;% (kts)
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Failure Types: 1=Hold Last, 2=Pre-Scale, 3=Post-Scale, 4=Pos Limits
 % 5=Rate Limits, 6=Generic, 7=Runaway(currently inactive), 8=Control Reversal
-SimPar.Fail.Surfaces.FailInit           = [0; 0; 0; 0; 0]; % Specify failure type (see above)
-SimPar.Fail.Surfaces.InitTime           = [0; 0; 0; 0; 0]; % Specify failure start time (sim time)
-SimPar.Fail.Surfaces.StopTime           = [0; 0; 0; 0; 0]; % Specify failure stop time (use inf for end of sim)
-SimPar.Fail.Surfaces.PreScale           = [0; 0; 0; 0; 0]; % Specify decimal pre-scale factor (e.g. 0.10 or 1.3)
-SimPar.Fail.Surfaces.PostScale          = [0; 0; 0; 0; 0]; % Specify decimal post-scale factor (e.g. 0.10 or 1.3)
+SimPar.Fail.Surfaces.FailInit           = zeros(SimIn.numSurfaces,1); % Specify failure type (see above)
+SimPar.Fail.Surfaces.InitTime           = zeros(SimIn.numSurfaces,1); % Specify failure start time (sim time)
+SimPar.Fail.Surfaces.StopTime           = zeros(SimIn.numSurfaces,1); % Specify failure stop time (use inf for end of sim)
+SimPar.Fail.Surfaces.PreScale           = zeros(SimIn.numSurfaces,1); % Specify decimal pre-scale factor (e.g. 0.10 or 1.3)
+SimPar.Fail.Surfaces.PostScale          = zeros(SimIn.numSurfaces,1); % Specify decimal post-scale factor (e.g. 0.10 or 1.3)
 SimPar.Fail.Surfaces.PosBias            = zeros(SimIn.Act.nCS,1); % Specify position bias in first-order model
 SimPar.Fail.Surfaces.PosScale           = zeros(SimIn.Act.nCS,1); % Specify position scale factor in first-order model
 SimPar.Fail.Surfaces.UpPlim             = SimPar.Actuator.MaxPos; % Specify effector upper position limit
@@ -169,11 +169,11 @@ SimPar.Fail.Surfaces.Generic_Sig_Select = [zeros(3,1);ones(8,1);zeros(4,1)]; % S
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Failure Types: 1=Hold Last, 2=Pre-Scale, 3=Post-Scale, 4=Pos Limits
 % 5=Rate Limits, 6=Generic, 7=Runaway(currently inactive), 8=Control Reversal
-SimPar.Fail.Props.FailInit           = [0; 0; 0; 0; 0; 0; 0; 0; 0]; % Specify failure type (see above)
-SimPar.Fail.Props.InitTime           = [0; 0; 0; 0; 0; 0; 0; 0; 0]; % Specify failure start time (sim time)
-SimPar.Fail.Props.StopTime           = [0; 0; 0; 0; 0; 0; 0; 0; 0]; % Specify failure stop time (use inf for end of sim)
-SimPar.Fail.Props.PreScale           = [0; 0; 0; 0; 0; 0; 0; 0; 0]; % Specify decimal pre-scale factor (e.g. 0.10 or 1.3)
-SimPar.Fail.Props.PostScale          = [0; 0; 0; 0; 0; 0; 0; 0; 0]; % Specify decimal post-scale factor (e.g. 0.10 or 1.3)
+SimPar.Fail.Props.FailInit           = zeros(SimIn.numEngines,1); % Specify failure type (see above)
+SimPar.Fail.Props.InitTime           = zeros(SimIn.numEngines,1); % Specify failure start time (sim time)
+SimPar.Fail.Props.StopTime           = zeros(SimIn.numEngines,1); % Specify failure stop time (use inf for end of sim)
+SimPar.Fail.Props.PreScale           = zeros(SimIn.numEngines,1); % Specify decimal pre-scale factor (e.g. 0.10 or 1.3)
+SimPar.Fail.Props.PostScale          = zeros(SimIn.numEngines,1); % Specify decimal post-scale factor (e.g. 0.10 or 1.3)
 SimPar.Fail.Props.PosBias            = zeros(SimIn.Eng.nENG,1); % Specify position bias in first-order model
 SimPar.Fail.Props.PosScale           = zeros(SimIn.Eng.nENG,1); % Specify position scale factor in first-order model
 SimPar.Fail.Props.UpPlim             = SimPar.Engine.MaxPos; % Specify effector upper position limit

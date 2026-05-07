@@ -31,6 +31,11 @@ function [tiltwing] = build_Lift_plus_Cruise(scaling_factor)
 % Ref. [1] list-cruiseTE6.list
 % Ref. [2] lift-cruiseTE6.xlsv
 % 2/21/25: John Clardy, added scaling factor
+% 05/06/26: Edison Martinez, modified the masses following one of the
+% papers where the L+C is used. See reference values at 
+% https://ntrs.nasa.gov/citations/20205007968
+% If the values are close to the ones of the paper they were left as is.
+% The CG was moved fwd as well.
 %% Define Scaling Factor
 % scaling_factor = .25;
 
@@ -214,15 +219,17 @@ prop_spin = [ +1 -1  +1 -1 -1 +1 -1 +1 +1];
 
 % motor mass
 % See Ref. [2] computed as avg (Ex. fpor Rotor mass 1: B17+B18+B37+B38) for all 1-8 rotors
-rotor_mass            = 2.66855138*scaling_factor^3; % slugs 
-rotor_drive_sys_mass  = 0.70223*scaling_factor^3; % slugs See Ref. [2] cells B128-B135 
-rotor_engine_mass     = 1.00984*scaling_factor^3; % slugs See Ref. [2] cells B138-B145
-rotor_asbly_mass = rotor_mass + rotor_drive_sys_mass + rotor_engine_mass;
+% rotor_mass            = 2.66855138*scaling_factor^3; % slugs 
+% rotor_drive_sys_mass  = 0.70223*scaling_factor^3; % slugs See Ref. [2] cells B128-B135 
+% rotor_engine_mass     = 1.00984*scaling_factor^3; % slugs See Ref. [2] cells B138-B145
+% rotor_asbly_mass = rotor_mass + rotor_drive_sys_mass + rotor_engine_mass;
+rotor_asbly_mass = 1.02567*scaling_factor^3; % 33 lb
 
-pusher_mass           = 2.129713*scaling_factor^3; % slugs See Ref. [2], sum cells B33+B54+B55
-pusher_drive_sys_mass = 2.289138*scaling_factor^3; % slugs See Ref. [2] cell B136
-pusher_engine_mass    = 3.31803*scaling_factor^3; % slugs See Ref. [2] cell B146
-pusher_asbly_mass = pusher_mass + pusher_drive_sys_mass + pusher_engine_mass;
+% pusher_mass           = 2.129713*scaling_factor^3; % slugs See Ref. [2], sum cells B33+B54+B55
+% pusher_drive_sys_mass = 2.289138*scaling_factor^3; % slugs See Ref. [2] cell B136
+% pusher_engine_mass    = 3.31803*scaling_factor^3; % slugs See Ref. [2] cell B146
+% pusher_asbly_mass = pusher_mass + pusher_drive_sys_mass + pusher_engine_mass;
+pusher_asbly_mass = 3.38782*scaling_factor^3; % 109 lb
 
 m_m = [repmat(rotor_asbly_mass,1,8)  pusher_asbly_mass];
 
@@ -241,6 +248,7 @@ for ii = 1:NP
                          p_b(:,ii), ...
                          m_b(:,ii), ...
                          m_m(ii), ...
+                         3342.25, ... % max RPM
                          p_T_e(:,ii));
    Prop{ii} = prop;
 end
@@ -250,22 +258,23 @@ end
 %% Rotor Booms Masses
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Pusher Prop Engine 
+% Turb Engine 
 % mass
-pusher_drive_sys_mass = 1.7809*scaling_factor^3;
-pusher_eng_mass = 13.5389*scaling_factor^3;
-pusher_eng_asbly_mass = pusher_drive_sys_mass + pusher_eng_mass;
+% pusher_drive_sys_mass = 1.7809*scaling_factor^3;
+% pusher_eng_mass = 13.5389*scaling_factor^3;
+% pusher_eng_asbly_mass = pusher_drive_sys_mass + pusher_eng_mass;
+turb_eng_asbly_mass = 8.23645*scaling_factor^3; % 265LB
 % inertia matrix
-pusher_eng_I = diag([0.000 0.000 0.000]*scaling_factor^5);
+turb_eng_I = diag([0.000 0.000 0.000]*scaling_factor^5);
 % location in the body frame
-pusher_eng_cm_b = [ -30.94;
+turb_eng_cm_b = [ -30.94;
                       0.00;
                      -7.79]*scaling_factor;
-Pusher_Eng = MassClass(pusher_eng_asbly_mass, pusher_eng_I, pusher_eng_cm_b);
+Pusher_Eng = MassClass(turb_eng_asbly_mass, turb_eng_I, turb_eng_cm_b);
 
-% Pusher Prop Generator
+% Generator
 % mass
-pusher_gen_mass = 4.2643*scaling_factor^3;
+pusher_gen_mass = 4.2643*scaling_factor^3; % 116 lb - 3.60539
 % inertia matrix
 pusher_gen_I = diag([0.000 0.000 0.000]*scaling_factor^5);
 % location in the body frame
@@ -283,7 +292,7 @@ landing_gear_I = diag([0.000 0.000 0.000]*scaling_factor^5);
 landing_gear_cm_b = [-13.32464336	-3.0924E-06	-1.391179415]*scaling_factor; % See Ref. [2], computed gear CM using cells B59-E61 & B122=E124
 Landing_Gear = MassClass(landing_gear_mass, landing_gear_I, landing_gear_cm_b);
 
-% Fuel Tank 1
+% Fuel Tank 1 (Li-Ion Batt + Elctr bus)
 % mass
 fuel_tank_1_mass = 7.9325*scaling_factor^3; % See Ref. [2], sum cells B35+B36
 fuel_liq_1_mass = 0.0*scaling_factor^3;
@@ -294,10 +303,10 @@ fuel_1_I = diag([0.000 0.000 0.000]*scaling_factor^5);
 fuel_1_cm_b = [-12.773578 ; 0.00; -3.130658]*scaling_factor; % See Ref. [2] cells C35-E36
 Fuel_1 = MassClass(fuel_1_mass, fuel_1_I, fuel_1_cm_b);
 
-% Fuel Tank 2
+% Fuel Tank 2 (Jet A)
 % mass
 fuel_tank_2_mass = 1.899172*scaling_factor^3; % See Ref. [2] cell B127
-fuel_liq_2_mass = 0.0*scaling_factor^3;
+fuel_liq_2_mass = 7.14*scaling_factor^3; % 230 lb
 fuel_2_mass = fuel_tank_2_mass + fuel_liq_2_mass;
 % inertia matrix
 fuel_2_I = diag([0.000 0.000 0.000]*scaling_factor^5);
@@ -311,10 +320,10 @@ sys_I = diag([0 0 0]*scaling_factor^5);
 sys_cm_b = [ -16; 0; -6]*scaling_factor; % See Ref. [2] cells C126-E126
 Sys = MassClass(sys_mass, sys_I, sys_cm_b);
 
-% Systems
-ext_mass = 54.60*scaling_factor^3; % Remainder of mass (Estimated)
+% Remainder
+ext_mass = 56.83*scaling_factor^3; % Remainder of mass (Estimated)
 ext_I = diag([0 0 0]*scaling_factor^5);
-ext_cm_b = [ -7.6; 0; -0.5]*scaling_factor; % Notional location (Estimated)
+ext_cm_b = [ -6.5; 0; -0.5]*scaling_factor; % Notional location (Estimated)
 Ext = MassClass(ext_mass, ext_I, ext_cm_b);
 
 Extra_Mass = {Pusher_Eng Pusher_Gen Landing_Gear Fuel_1 Fuel_2 Sys Ext};

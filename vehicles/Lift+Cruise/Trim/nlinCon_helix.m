@@ -145,9 +145,10 @@ if POLY
 else
 
   % set the control inputs
-  LPC.om_p(1:4) = prop(1:4);
-  LPC.om_p(5:8) = prop(5:8);
-  LPC.om_p(9)   = prop(9);
+  LPC.om_p = prop;
+  % LPC.om_p(1:4) = prop(1:4);
+  % LPC.om_p(5:8) = prop(5:8);
+  % LPC.om_p(9)   = prop(9);
   % LPC.om_p(1:4) = prop(1);
   % LPC.om_p(5:8) = prop(2);
   % LPC.om_p(9)   = prop(3);

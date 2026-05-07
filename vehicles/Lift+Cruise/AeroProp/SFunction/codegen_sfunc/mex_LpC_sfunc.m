@@ -1,7 +1,8 @@
-function [] = mex_LpC_sfunc(copyHeaders)
+function [] = mex_LpC_sfunc(copyHeaders, sfuncName)
 
 arguments
   copyHeaders logical = false;
+  sfuncName char = 'LpC_Scaled_wrapper_sfunc';
 end
 
 generateLib = true;
@@ -29,10 +30,17 @@ libfile = sprintf('%s/LpC_wrapper.%s', libdir, libext);
 
 outdir = fullfile(pwd,'vehicles','Lift+Cruise','obj');
 
-srcfile = './vehicles/Lift+Cruise/AeroProp/SFunction/codegen_sfunc/LpC_Scaled_wrapper_sfunc.c';
+% srcfile = './vehicles/Lift+Cruise/AeroProp/SFunction/codegen_sfunc/LpC_Scaled_wrapper_sfunc.c';
+srcdir  = './vehicles/Lift+Cruise/AeroProp/SFunction/codegen_sfunc';
+srcfile = fullfile(srcdir, [sfuncName '.c']);
+
+if ~isfile(srcfile)
+    error('mex_LpC_sfunc:MissingSource', ...
+        'Source file not found: %s', srcfile);
+end
 
 %mex(ipath, libpath, libs, '-outdir', outdir, srcfile);
 %mex(ipath, libpath, '-outdir', outdir, srcfile, libfile);
-mex('-v','COMPFLAGS="$COMPFLAGS /MT"', ipath, libpath, '-outdir', outdir, srcfile, libfile, '-output','LpC_Scaled_wrapper_sfunc');
+mex('-v','COMPFLAGS="$COMPFLAGS /MT"', ipath, libpath, '-outdir', outdir, srcfile, libfile, '-output', sfuncName);
 
 end

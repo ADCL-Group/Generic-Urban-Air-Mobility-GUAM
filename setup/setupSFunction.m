@@ -1,8 +1,37 @@
-function setupSFunction(SimIn,model)
-    if SimIn.ScalingFactor > 0
-      sfuncName = 'LpC_Scaled_wrapper_sfunc';
+function setupSFunction(SimIn, model, copyHeaders)
+    arguments
+        SimIn struct
+        model char
+        copyHeaders logical = false
+    end
+    
+    tol = 1e-9;
+    scale = abs(SimIn.ScalingFactor);
+    
+    isGUAM = any(SimIn.vehID == [0 -1]);
+    isHERO = (SimIn.vehID == 1);
+    
+    % Get s-function name and decide to compile
+    if isGUAM && abs(scale - 1.0) < tol
+        sfuncName = 'LpC_wrapper_sfunc';
+        compileNeeded = false;
+    elseif isGUAM
+        sfuncName = 'LpC_Scaled_wrapper_sfunc';
+        compileNeeded = true;
+    elseif isHERO
+        sfuncName = 'LpC_Hero_wrapper_sfunc';
+        outdir = fullfile(pwd,'vehicles','Lift+Cruise','obj');
+        mexPath = fullfile(outdir, [sfuncName '.' mexext]);
+        compileNeeded = ~isfile(mexPath);
     else
-      sfuncName = 'LpC_wrapper_sfunc';
+        sfuncName = sprintf('LpC_VEH%d_wrapper_sfunc', SimIn.vehID);
+        outdir = fullfile(pwd,'vehicles','Lift+Cruise','obj');
+        mexPath = fullfile(outdir, [sfuncName '.' mexext]);
+        compileNeeded = ~isfile(mexPath);
+    end
+    
+    if compileNeeded
+        mex_LpC_sfunc(copyHeaders, sfuncName);
     end
 
     if ~bdIsLoaded(model), open(model); end

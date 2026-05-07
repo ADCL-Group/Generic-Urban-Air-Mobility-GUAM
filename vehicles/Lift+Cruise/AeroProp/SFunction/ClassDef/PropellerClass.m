@@ -16,6 +16,8 @@ classdef PropellerClass
 
     motor_mass % motor mass
 
+    max_rpm % max rpm
+
     p_b % propeller in body frame
     m_b % motor in body frame
     h_b % hinge in the body frame
@@ -110,7 +112,7 @@ classdef PropellerClass
     
       %% check to see if the proper number of 
       %% arguments were passed
-      if nargin < 6 | nargin > 7
+      if nargin < 7 | nargin > 8
         error('incorrect number of input arguments')
       end
 
@@ -127,6 +129,7 @@ classdef PropellerClass
       obj.p_b        = varargin{idx}; idx = idx+1;
       obj.m_b        = varargin{idx}; idx = idx+1;
       obj.motor_mass = varargin{idx}; idx = idx+1;
+      obj.max_rpm    = varargin{idx}; idx = idx+1;
       
       %% if a thrust vector is specified set it, 
       %% otherwise assume its aligned with the body x-axis.
