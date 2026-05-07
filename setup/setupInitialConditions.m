@@ -102,7 +102,7 @@ IC.GrndAltMSL = 0; % (ft) MSL altitude of ground.
 IC.LatGeod  = 37.0881*deg;  % Latitude (deg)
 IC.Lon      = -76.3448*deg; % Longitude (deg)
 IC.AltMSL   = 0.0*ft;       % (ft) Altitude above Mean Sea Level
-N_ft = geoidheight(rad2deg(SimIn.IC.LatGeod), rad2deg(SimIn.IC.Lon), 'EGM96') * SimIn.Units.m;
+N_ft = geoidheight(rad2deg(IC.LatGeod), mod(rad2deg(IC.Lon),360), 'EGM96') * SimIn.Units.m;
 IC.hRef = -(IC.GrndAltMSL + N_ft); % Z-axis positive down
 
 % IC.LatGeod  = RefInputs.initialLat; % Latitude (rad)
