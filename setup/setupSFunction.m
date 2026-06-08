@@ -13,7 +13,8 @@ function setupSFunction(SimIn, model, copyHeaders)
     
     % Get s-function name and decide to compile
     if isGUAM && abs(scale - 1.0) < tol
-        sfuncName = 'LpC_wrapper_sfunc';
+        % sfuncName = 'LpC_wrapper_sfunc';
+        sfuncName = 'LpC_wrapper_sfunc_new';
         compileNeeded = false;
     elseif isGUAM
         sfuncName = 'LpC_Scaled_wrapper_sfunc';
