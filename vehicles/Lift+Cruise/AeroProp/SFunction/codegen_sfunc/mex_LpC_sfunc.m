@@ -12,7 +12,8 @@ codegen_LpC_lib(generateLib, copyHeaders);
 
 % static lib extension by OS
 if ispc
-  libext = 'lib';
+  %libext = 'lib';
+  libext = 'a';
 elseif ismac
   libext = 'a';
 elseif isunix

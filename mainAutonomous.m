@@ -162,6 +162,14 @@ SimIn.IC.LatGeod =  origin(1) * SimIn.Units.deg;
 SimIn.IC.Lon = origin(2) * SimIn.Units.deg;
 
 SimIn.stopTime = 1000;        % run sim until end of path
+% addpath('./AeronomieFiles/');
+% vtol_battery_init;
+% runFiles;
+
+addpath('./AeronomieFiles/');
+vtol_battery_init;
+runFiles;
+
 
 open_system(model);
 

@@ -10,3 +10,6 @@ vehicles/Lift+Cruise/obj/LpC_Scaled_wrapper_sfunc.mexa64
 
 # Auto-generated Simulink ROS bus conversion functions
 +bus_conv_fcns/
+fmt_planner/
+*.prj
+resources/*

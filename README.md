@@ -35,6 +35,14 @@ This simulation was originally forked from NASA's model. Several modifications w
   * [Wolowicz, C.; Bowman, J.; Gilbert, W. – NASA TP-1534 (1979)](https://ntrs.nasa.gov/api/citations/19790022005/downloads/19790022005.pdf)  
 - **Trim Script for Scaled VTOL:** An additional script was implemented to compute trim states for the scaled vehicle configurations. 
 
+### Power System
+The blocks within `PowerSystem` are Aeronomie blocks that are based on models and methods developed at Argonne National Laboratory for the simulation and analysis of low-carbon aircraft. For additional details on the system models, see:
+
+* [“Urban Air Mobility: A Preliminary Case Study for Chicago and Atlanta,” IEEE, 2022.](https://ieeexplore.ieee.org/document/9814052)
+* [“Estimating Mission-Based Energy and System Dynamics of e-VTOL Aircraft,” AIAA AVIATION, 2023.](https://arc.aiaa.org/doi/10.2514/6.2023-3922)
+* [“Simulating System and Powerplant Dynamics of an e-VTOL Aircraft for a Full Flight Mission Including Transition,” AIAA AVIATION FORUM AND ASCEND, 2025.](https://arc.aiaa.org/doi/10.2514/6.2025-3558)
+* Aeronomie: [https://vms.taps.anl.gov/tools/aeronomie/](https://vms.taps.anl.gov/tools/aeronomie/)
+
 ### Personalization
 While demonstration scripts are provided, users can customize various subsystems through the `userStruct` structure and `simSetup.m` script. `userStruct` allows setting different subsystem variants and switches to tailor simulations to specific needs. Key configuration options include actuator type, atmosphere model, trajectory input, and more.
 

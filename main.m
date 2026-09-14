@@ -4,6 +4,7 @@ clc; close all; clearvars;
 addpath('./Exec_Scripts/');
 if ~exist("userStruct",'var')
     addpath('./Bez_Functions/');
+    addpath('./AeronomieFiles/')
 end
 
 %% sim parameters
@@ -56,6 +57,8 @@ open(model);
 
 setupSFunction(SimIn,model);
 SimIn.stopTime = 1000;
+vtol_battery_init;
+runFiles;
 open(model);
 
 % SimOut = logsout{1}.Values;
