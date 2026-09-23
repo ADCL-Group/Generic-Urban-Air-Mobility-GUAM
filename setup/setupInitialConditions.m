@@ -81,11 +81,11 @@ if (exist('target','var') && ~isempty(target))
 
 
       otherwise
-        error('Unknown target field:  %s\n',fields{i});
+        % error('Unknown target field:  %s\n',fields{i});
     end
   end
   
-  if ~isfield(target,'theta')
+  if ~isfield(target,'pitch')
     pitch = gamma + alpha;
   end
   if ~isfield(target,'yaw')
@@ -148,10 +148,18 @@ IC.VelDtB_bEb  = [0;0;0];
 IC.OmegDtB_BHb = [0;0;0];
 
 % set default bias (trim) values for control surfaces
-IC.bias.Surfaces    = Control.IC.surf0;
+if (exist('target','var') && ~isempty(target)) && isfield(target,'bias') && isfield(target.bias,'Surfaces')
+    IC.bias.Surfaces = double(target.bias.Surfaces);
+else
+    IC.bias.Surfaces = Control.IC.surf0;
+end
 
 % set default bias (trim) values for engines
-IC.bias.Engines = Control.IC.rotor0;
+if (exist('target','var') && ~isempty(target)) && isfield(target,'bias') && isfield(target.bias,'Engines')
+    IC.bias.Engines = double(target.bias.Engines);
+else
+    IC.bias.Engines = Control.IC.rotor0;
+end
 
 
 

@@ -46,7 +46,7 @@ if (exist('target','var') && ~isempty(target))
         case 'stopTime'
             stopTime = target.stopTime* s; % s;
       otherwise
-        error('Unknown target field:  %s\n',fields{i});
+        % error('Unknown target field:  %s\n',fields{i});
     end
   end
 end
@@ -71,7 +71,7 @@ if SimIn.ctrlMode == 3
 end
 
 % Set initial conditions from the reference trajectory
-SimIn.IC          = setupInitialConditions(SimIn,[]);
+SimIn.IC          = setupInitialConditions(SimIn,target);
 SimIn.EOM         = setupEOM(SimIn);  % Must come after Env and IC's
 SimIn.Trim        = setupTrim(SimIn);
 SimIn.Act         = setupActuators(SimIn);
