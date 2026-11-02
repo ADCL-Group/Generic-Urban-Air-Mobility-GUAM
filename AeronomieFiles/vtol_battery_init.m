@@ -77,6 +77,22 @@ ess.plant.init.tau1.map = [22.8 22.8 22.8 22.8 22.8 22.8 22.8 22.8 22.8 ...
 ess.plant.init.tau2.idx1_soc = ess.plant.init.soc_index;
 ess.plant.init.tau2.map = [270 270 270 270 270 270 270 270 270 270 270];
 
+% Resample all the previous tables to increments of 1% not 10%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+soc_old = ess.plant.init.soc_index;
+soc_new = 0:0.01:1;
+
+tables = {'voc', 'rint', 'rpol1', 'rpol2', 'tau1', 'tau2'};
+
+for k = 1:numel(tables)
+    name = tables{k};
+    old_map = ess.plant.init.(name).map;
+    ess.plant.init.(name).map = interp1(soc_old, old_map, soc_new, 'linear');
+    ess.plant.init.(name).idx1_soc = soc_new;
+end
+
+ess.plant.init.soc_index = soc_new;
+
 % Max and min,max and min voltage when charging/discharging
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ess.plant.init.curr_dis_cont_max.map   = 20; %Maximal continuous discharge current (A)
@@ -180,22 +196,25 @@ ess.plant.init.ll_volt_chg         =-ess.plant.init.time_cont_min*ess.plant.init
 % discharge is brought to 0 at low SOC and charge is brought to 0 at high
 % SOC
 % modification by vfreyermuth on 9/8/06
-% ess.plant.init.pwr_dis.map            = ess.plant.init.pwr_dis.map .* double(ess.plant.init.soc_index >= ess.plant.init.soc_min);
-% ess.plant.init.curr_dis_cont_max.map  = ess.plant.init.curr_dis_cont_max.map .* double(ess.plant.init.soc_index >= ess.plant.init.soc_min);
-% ess.plant.init.pwr_dis_10sec.map      = ess.plant.init.pwr_dis_10sec.map .* double(ess.plant.init.soc_index >= ess.plant.init.soc_min);
-% ess.plant.init.curr_dis_burst_max.map = ess.plant.init.curr_dis_burst_max.map .* double(ess.plant.init.soc_index >= ess.plant.init.soc_min);
-% ess.plant.init.pwr_chg.map            = ess.plant.init.pwr_chg.map .*double(ess.plant.init.soc_index <= ess.plant.init.soc_max);
-% ess.plant.init.curr_chg_cont_max.map  = ess.plant.init.curr_chg_cont_max.map .*double(ess.plant.init.soc_index <= ess.plant.init.soc_max);
-% ess.plant.init.pwr_chg_10sec.map      = ess.plant.init.pwr_chg_10sec.map .*double(ess.plant.init.soc_index <= ess.plant.init.soc_max);
+dis_mask = double(ess.plant.init.soc_index > ess.plant.init.soc_min);
+chg_mask = double(ess.plant.init.soc_index < ess.plant.init.soc_max);
+ess.plant.init.pwr_dis.map = ess.plant.init.pwr_dis.map .* dis_mask;
+ess.plant.init.curr_dis_cont_max.map = ess.plant.init.curr_dis_cont_max.map .* dis_mask;
+ess.plant.init.pwr_dis_10sec.map = ess.plant.init.pwr_dis_10sec.map .* dis_mask;
+ess.plant.init.curr_dis_burst_max.map = ess.plant.init.curr_dis_burst_max.map .* dis_mask;
+ess.plant.init.pwr_chg.map = ess.plant.init.pwr_chg.map .* chg_mask;
+ess.plant.init.curr_chg_cont_max.map = ess.plant.init.curr_chg_cont_max.map .* chg_mask;
+ess.plant.init.pwr_chg_10sec.map = ess.plant.init.pwr_chg_10sec.map .* chg_mask;
+ess.plant.init.curr_chg_burst_max.map = ess.plant.init.curr_chg_burst_max.map .* chg_mask;
 % ess.plant.init.curr_chg_burst_max.map = ess.plant.init.curr_chg_burst_max.map .*double(ess.plant.init.soc_index <= ess.plant.init.soc_max);
-ess.plant.init.pwr_dis.map            = ess.plant.init.pwr_dis.map ;%.* double(ess.plant.init.soc_index >= ess.plant.init.soc_min);
-ess.plant.init.curr_dis_cont_max.map  = ess.plant.init.curr_dis_cont_max.map ;%.* double(ess.plant.init.soc_index >= ess.plant.init.soc_min);
-ess.plant.init.pwr_dis_10sec.map      = ess.plant.init.pwr_dis_10sec.map ;%.* double(ess.plant.init.soc_index >= ess.plant.init.soc_min);
-ess.plant.init.curr_dis_burst_max.map = ess.plant.init.curr_dis_burst_max.map;% .* double(ess.plant.init.soc_index >= ess.plant.init.soc_min);
-ess.plant.init.pwr_chg.map            = ess.plant.init.pwr_chg.map;%.*double(ess.plant.init.soc_index <= ess.plant.init.soc_max);
-ess.plant.init.curr_chg_cont_max.map  = ess.plant.init.curr_chg_cont_max.map;% .*double(ess.plant.init.soc_index <= ess.plant.init.soc_max);
-ess.plant.init.pwr_chg_10sec.map      = ess.plant.init.pwr_chg_10sec.map;% .*double(ess.plant.init.soc_index <= ess.plant.init.soc_max);
-ess.plant.init.curr_chg_burst_max.map = ess.plant.init.curr_chg_burst_max.map;% .*double(ess.plant.init.soc_index <= ess.plant.init.soc_max);
+% ess.plant.init.pwr_dis.map            = ess.plant.init.pwr_dis.map ;%.* double(ess.plant.init.soc_index >= ess.plant.init.soc_min);
+% ess.plant.init.curr_dis_cont_max.map  = ess.plant.init.curr_dis_cont_max.map ;%.* double(ess.plant.init.soc_index >= ess.plant.init.soc_min);
+% ess.plant.init.pwr_dis_10sec.map      = ess.plant.init.pwr_dis_10sec.map ;%.* double(ess.plant.init.soc_index >= ess.plant.init.soc_min);
+% ess.plant.init.curr_dis_burst_max.map = ess.plant.init.curr_dis_burst_max.map;% .* double(ess.plant.init.soc_index >= ess.plant.init.soc_min);
+% ess.plant.init.pwr_chg.map            = ess.plant.init.pwr_chg.map;%.*double(ess.plant.init.soc_index <= ess.plant.init.soc_max);
+% ess.plant.init.curr_chg_cont_max.map  = ess.plant.init.curr_chg_cont_max.map;% .*double(ess.plant.init.soc_index <= ess.plant.init.soc_max);
+% ess.plant.init.pwr_chg_10sec.map      = ess.plant.init.pwr_chg_10sec.map;% .*double(ess.plant.init.soc_index <= ess.plant.init.soc_max);
+% ess.plant.init.curr_chg_burst_max.map = ess.plant.init.curr_chg_burst_max.map;% .*double(ess.plant.init.soc_index <= ess.plant.init.soc_max);
 ess.plant.init.pwr_chg_at_soc_init     = interp1(ess.plant.init.soc_index,ess.plant.init.pwr_chg.map,ess.plant.init.soc_init); % (0->1) Power at which battery is charged when SOC is at its minimum
 ess.plant.init.pwr_dis_at_soc_init     = interp1(ess.plant.init.soc_index,ess.plant.init.pwr_dis.map,ess.plant.init.soc_init); % (0->1) Power at which battery is discharged when SOC is at its maximum
 ess.plant.init.pwr_chg_at_min_soc     = interp1(ess.plant.init.soc_index,ess.plant.init.pwr_chg.map,ess.plant.init.soc_min); % (0->1) Power at which battery is charged when SOC is at its minimum

@@ -223,10 +223,10 @@ motoring = P_mech > 0;
 generating = P_mech < 0;
 
 mot.plant.calc.pwr_elec.map(motoring) = ...
-    P_mech(motoring)./etaEM(motoring);
+    P_mech(motoring)./etaEM(motoring)./SimIn.Units.W;
 
 mot.plant.calc.pwr_elec.map(generating) = ...
-    P_mech(generating).*etaEM(generating);
+    P_mech(generating).*etaEM(generating)./SimIn.Units.W;
 
 %% Clear temporary variables
 

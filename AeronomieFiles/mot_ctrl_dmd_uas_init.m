@@ -22,4 +22,4 @@ mot.propel.plant.init.propD         = powerplant.propel.plant.init.propD;
 
 mot.tc.plant.init.ratio = powerplant.tc.plant.init.ratio;
 
-mot.propel.init.disableEffMap = 0; %1 sets eff to 1  |  0 sets eff to map value 
+mot.propel.init.disableEffMap = 1; %1 sets eff to 1  |  0 sets eff to map value 
