@@ -12,6 +12,7 @@ setenv("GVSActiveRootDir", pwd);
 path(genpath('ClassDef'), path);
 path(genpath('Controller'), path);
 path(genpath('Environment'), path);
+path(genpath('AeronomieFiles'), path);
 addpath ./lib;
 
 path(genpath('./lib/utilities'),path);

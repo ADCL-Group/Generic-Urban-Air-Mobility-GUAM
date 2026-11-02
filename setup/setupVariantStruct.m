@@ -138,7 +138,7 @@ if ~isfield(userStruct.variants.connection,'portIn') || isempty(userStruct.varia
   userStruct.variants.connection.portIn = 5502;
 end
 if ~isfield(userStruct.variants.connection,'portOut') || isempty(userStruct.variants.connection.portOut)
-  userStruct.variants.connection.portOut = 5501;
+  userStruct.variants.connection.portOut = 5505;
 end
 
 if isfield(userStruct,'vehID') && ~isempty(userStruct.vehID)
