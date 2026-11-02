@@ -32,7 +32,7 @@ function [G, v, uMin, uMax, duMin, duMax, Wv, Wu, u_d, du_d] = INDI_control(FM_u
     om_prop_lo = limits(2, 1:numEng)';
     surf_hi    = limits(1, numEng + 1:end)';
     surf_lo    = limits(2, numEng + 1:end)';
-    ompdot_max = (100/limits(3,1))*limits(3,1:numEng)'; % Scale it to 230rad/s
+    ompdot_max = (100/limits(3,1))*limits(3,1:numEng)'; % Scale it to 100rad/s
     deldot_max = (7/limits(3,numEng + 1)).*limits(3,numEng + 1:end)'; % Scale it to 7rad/s
     % The rate of the control surface must be close to x3wn of the model
     % reference that way the control can keep up with the pilot commands.
@@ -60,6 +60,7 @@ function [G, v, uMin, uMax, duMin, duMax, Wv, Wu, u_d, du_d] = INDI_control(FM_u
     
     MCA_prop_M(:,end) = 0;
     MCA_prop_F(1,end) = 0;
+    MCA_prop_F(2,1:numEng-1) = 0;
 
     % Zero block for force contribution of control surfaces
     zero_block = zeros(size(MCA_prop_F, 1), size(MCA_aero_M, 2));
