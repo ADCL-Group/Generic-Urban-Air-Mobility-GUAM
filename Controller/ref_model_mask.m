@@ -22,11 +22,13 @@ classdef ref_model_mask
             % omega = [r_omega; p_omega; y_omega; h_omega];
             % damp = [r_damp; p_damp; y_damp; h_damp];
 
-            omega = [r_omega; p_omega; y_omega; h_omega; h_omega];
-            damp = [r_damp; p_damp; y_damp; h_damp; h_damp];
+            omega = [r_omega; p_omega; h_omega; h_omega];
+            damp = [r_damp; p_damp; h_damp; h_damp];
 
             maskWorkspace.set('omega',omega);
             maskWorkspace.set('damp',damp);
+            maskWorkspace.set('y_omega',y_omega);
+            maskWorkspace.set('y_damp',y_damp);
         end
 
         % Use the code browser on the left to add the callbacks.
